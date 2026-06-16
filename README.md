@@ -1,3 +1,15 @@
+# This is a fork.
+
+This is a fork of JUINT implementation.  Why?  Because I want it mutable.  When you need 
+high performance in java, the first rule is to save on garbage collection.  Best way is to 
+not make garbage. Mutable objects are the best way to do that.
+
+Here I attempt to keep the logic but add mutability.  Maybe it will be merged back - when original 
+developers agree.  
+
+All licenses apply. 
+
+
 # JUInt [![CircleCI](https://circleci.com/gh/nervous-systems/juint/tree/master.png?style=shield&circle-token=6f13ee621838019658e21ab69a65f3fe7743401f)](https://circleci.com/gh/nervous-systems/juint/tree/master) [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.nervous/juint/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.nervous/juint)
 
 Optimized, immutable Java implementations of fixed-width, unsigned integers.
@@ -50,6 +62,18 @@ The `multiply` disparity above is due to HotSpot's intrinsification of
 `BigInteger.multiplyToLen`, a private method used by `BigInteger.multiply` (and
 `pow`, by association) - obviously not an optimization strategy available to
 library code.
+
+## Building and Releasing
+
+To compile and install the project locally (without signing the artifacts, and installing into the local repository):
+```bash
+mvn clean install
+```
+
+To sign and deploy the artifacts (e.g., to OSSRH / Maven Central):
+```bash
+mvn clean deploy -P release
+```
 
 ## License
 
