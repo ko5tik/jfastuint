@@ -42,30 +42,36 @@ final class StringUtil {
   static String ZEROES = "000000000000000000000000000000000000000000000000000000000000000";
 
   static int[] fromString(final String s, final int radix, final int maxWidth) {
-    if(radix < Character.MIN_RADIX || Character.MAX_RADIX < radix)
+    if(radix < Character.MIN_RADIX || Character.MAX_RADIX < radix) {
       throw new NumberFormatException("Radix out of range");
+    }
 
-    if(-1 < s.lastIndexOf('-'))
+    if(-1 < s.lastIndexOf('-')) {
       throw new NumberFormatException("Invalid sign");
+    }
 
     int pos         = 0;
     final int len   = s.length();
     final int signi = s.lastIndexOf('+');
 
     if(-1 < signi) {
-      if(0 < signi)
+      if(0 < signi) {
         throw new NumberFormatException("Illegal embedded sign character");
+      }
       pos++;
     }
 
-    if(len == pos)
+    if(len == pos) {
       throw new NumberFormatException("Zero-length");
+    }
 
-    while(pos < len && Character.digit(s.charAt(pos), radix) == 0)
+    while(pos < len && Character.digit(s.charAt(pos), radix) == 0) {
       pos++;
+    }
 
-    if(pos == len)
+    if(pos == len) {
       return Arrays.ZERO;
+    }
 
     final int digits = len - pos, perint = DIGITS_PER_INT[radix - 2];
     final long bits  = ((digits * BITS_PER_DIGIT[radix - 2]) >>> 10) + 1;
@@ -77,15 +83,17 @@ final class StringUtil {
       firstlen = perint;
 
     String group = s.substring(pos, pos += firstlen);
-    if((ints[words - 1] = Integer.parseInt(group, radix)) < 0)
+    if((ints[words - 1] = Integer.parseInt(group, radix)) < 0) {
       throw new NumberFormatException("Illegal digit");
+    }
 
     final int superradix = RADIX_INT[radix - 2];
     int groupv           = 0;
     while(pos < len) {
       group = s.substring(pos, pos += perint);
-      if((groupv = Integer.parseInt(group, radix)) < 0)
+      if((groupv = Integer.parseInt(group, radix)) < 0) {
         throw new NumberFormatException("Illegal digit");
+      }
       muladd(ints, superradix, groupv);
     }
 
@@ -125,9 +133,9 @@ final class StringUtil {
       tmp = Arrays.divmod(q, divisor);
       q   = tmp[0];
       r   = tmp[1];
-      if(r.length == 0)
+      if(r.length == 0) {
         groups[group++] = "0";
-      else {
+      } else {
         final long rl = r.length == 1 ?
           (r[0] & LONG) : ((r[0] & LONG) << 32) | (r[1] & LONG);
         groups[group++] = Long.toString(rl, radix);
@@ -140,8 +148,9 @@ final class StringUtil {
 
     int zeroes;
     for(int i = group - 2; 0 <= i; i--) {
-      if((zeroes = rlen - groups[i].length()) != 0)
+      if((zeroes = rlen - groups[i].length()) != 0) {
         sb.append(ZEROES.substring(0, zeroes));
+      }
       sb.append(groups[i]);
     }
     return sb.toString();

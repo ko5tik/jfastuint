@@ -103,22 +103,25 @@ public final class UInt128 extends UInt<UInt128> {
   }
 
   public UInt128 setBit(final int bit) {
-    if(bit < 0)
+    if(bit < 0) {
       throw new ArithmeticException("Negative bit address");
+    }
     return ((MAX_WIDTH <= bit >>> 5) ? this :
             new UInt128(Arrays.setBit(ints, bit)));
   }
 
   public UInt128 clearBit(final int bit) {
-    if(bit < 0)
+    if(bit < 0) {
       throw new ArithmeticException("Negative bit address");
+    }
     return ((ints.length <= bit >>> 5) ? this :
             new UInt128(Arrays.clearBit(ints, bit)));
   }
 
   public UInt128 flipBit(final int bit) {
-     if(bit < 0)
+     if(bit < 0) {
        throw new ArithmeticException("Negative bit address");
+     }
      return ((MAX_WIDTH <= bit >>> 5) ? this :
              new UInt128(Arrays.flipBit(ints, bit)));
   }
@@ -152,14 +155,16 @@ public final class UInt128 extends UInt<UInt128> {
   }
 
   public UInt128 addmod(final UInt128 add, final UInt128 mod) {
-    if(mod.isZero())
+    if(mod.isZero()) {
       throw new ArithmeticException("div/mod by zero");
+    }
     return new UInt128(Arrays.addmod(ints, add.ints, mod.ints));
   }
 
   public UInt128 subtract(final UInt128 other) {
-    if(other.isZero())
+    if(other.isZero()) {
       return this;
+    }
     final int cmp = compareTo(other);
     return (cmp == 0 ? ZERO :
             new UInt128(
@@ -176,27 +181,33 @@ public final class UInt128 extends UInt<UInt128> {
   }
 
   public UInt128 mulmod(final UInt128 mul, final UInt128 mod) {
-    if(mod.isZero())
+    if(mod.isZero()) {
       throw new ArithmeticException("div/mod by zero");
+    }
     return new UInt128(Arrays.mulmod(ints, mul.ints, mod.ints));
   }
 
   public UInt128 pow(final int exp) {
-    if(exp < 0)
+    if(exp < 0) {
       throw new ArithmeticException("Negative exponent");
-    if(exp == 0)
+    }
+    if(exp == 0) {
       return ONE;
-    if(isZero())
+    }
+    if(isZero()) {
       return this;
+    }
     return (exp == 1 ? this :
             new UInt128(Arrays.pow(ints, getLowestSetBit(), exp, MAX_WIDTH)));
   }
 
   public UInt128 divide(final UInt128 other) {
-    if(other.isZero())
+    if(other.isZero()) {
       throw new ArithmeticException("div/mod by zero");
-    if(isZero())
+    }
+    if(isZero()) {
       return ZERO;
+    }
     final int cmp = compareTo(other);
     return (cmp  <  0 ? ZERO :
             (cmp == 0 ? ONE  :
@@ -204,10 +215,12 @@ public final class UInt128 extends UInt<UInt128> {
   }
 
   public UInt128 mod(final UInt128 other) {
-    if(other.isZero())
+    if(other.isZero()) {
       throw new ArithmeticException("div/mod by zero");
-    if(isZero())
+    }
+    if(isZero()) {
       return ZERO;
+    }
     final int cmp = compareTo(other);
     return (cmp  <  0 ? this :
             (cmp == 0 ? ZERO :
@@ -215,23 +228,138 @@ public final class UInt128 extends UInt<UInt128> {
   }
 
   public UInt128[] divmod(final UInt128 other) {
-    if(other.isZero())
+    if(other.isZero()) {
       throw new ArithmeticException("div/mod by zero");
-    if(isZero())
+    }
+    if(isZero()) {
       return new UInt128[]{ZERO, ZERO};
+    }
     final int cmp = compareTo(other);
-    if(cmp < 0)
+    if(cmp < 0) {
       return new UInt128[]{ZERO, this};
-    if(cmp == 0)
+    }
+    if(cmp == 0) {
       return new UInt128[]{ONE, ZERO};
+    }
 
     final int[][] qr = Arrays.divmod(ints, other.ints);
     return new UInt128[]{new UInt128(qr[0]), new UInt128(qr[1])};
   }
 
   public boolean equals(final Object other) {
-    if(other instanceof BigInteger)
-      return Arrays.compare(ints, (BigInteger)other, MAX_WIDTH) == 0;
+    if(other instanceof BigInteger) {
+      return this.toBigInteger().equals(other);
+    }
     return super.equals(other);
+  }
+
+  public static UInt128 mutable(final int[] ints) {
+    int[] padded = new int[MAX_WIDTH];
+    int len = Math.min(ints.length, MAX_WIDTH);
+    System.arraycopy(ints, ints.length - len, padded, MAX_WIDTH - len, len);
+    return new UInt128(padded, false);
+  }
+
+  public static UInt128 mutable(final long v) {
+    return mutable(Arrays.valueOf(v));
+  }
+
+  private UInt128(final int[] ints, final boolean dummy) {
+    super(ints);
+  }
+
+  @Override
+  public boolean mNot() {
+    return Arrays.mNot(this.ints);
+  }
+
+  @Override
+  public boolean mAnd(final UInt128 other) {
+    return Arrays.mAnd(this.ints, other.ints);
+  }
+
+  @Override
+  public boolean mOr(final UInt128 other) {
+    return Arrays.mOr(this.ints, other.ints);
+  }
+
+  @Override
+  public boolean mXor(final UInt128 other) {
+    return Arrays.mXor(this.ints, other.ints);
+  }
+
+  @Override
+  public boolean mSetBit(final int bit) {
+    return Arrays.mSetBit(this.ints, bit);
+  }
+
+  @Override
+  public boolean mClearBit(final int bit) {
+    return Arrays.mClearBit(this.ints, bit);
+  }
+
+  @Override
+  public boolean mFlipBit(final int bit) {
+    return Arrays.mFlipBit(this.ints, bit);
+  }
+
+  @Override
+  public boolean mShiftLeft(final int places) {
+    return Arrays.mShiftLeft(this.ints, places);
+  }
+
+  @Override
+  public boolean mShiftRight(final int places) {
+    return Arrays.mShiftRight(this.ints, places);
+  }
+
+  @Override
+  public boolean mInc() {
+    return Arrays.mInc(this.ints);
+  }
+
+  @Override
+  public boolean mDec() {
+    return Arrays.mDec(this.ints);
+  }
+
+  @Override
+  public boolean mAdd(final UInt128 other) {
+    return Arrays.mAdd(this.ints, other.ints);
+  }
+
+  @Override
+  public boolean mSubtract(final UInt128 other) {
+    return Arrays.mSubtract(this.ints, other.ints);
+  }
+
+  @Override
+  public boolean mMultiply(final UInt128 other) {
+    return Arrays.mMultiply(this.ints, other.ints);
+  }
+
+  @Override
+  public boolean mAddMod(final UInt128 add, final UInt128 mod) {
+    return Arrays.mAddMod(this.ints, add.ints, mod.ints);
+  }
+
+  @Override
+  public boolean mMulMod(final UInt128 mul, final UInt128 mod) {
+    return Arrays.mMulMod(this.ints, mul.ints, mod.ints);
+  }
+
+  @Override
+  public boolean mPow(final int exp) {
+    return Arrays.mPow(this.ints, exp);
+  }
+
+  @Override
+  public boolean mDivide(final UInt128 other) {
+    return Arrays.mDivide(this.ints, other.ints);
+  }
+
+  @Override
+  public boolean mMod(final UInt128 other) {
+    return Arrays.mMod(this.ints, other.ints);
   }
 }

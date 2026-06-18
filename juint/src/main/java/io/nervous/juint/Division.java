@@ -16,9 +16,9 @@ final class Division {
     int  rem         = a[0], alen = a.length;
     final long reml  = rem & LONG;
 
-    if(reml < bl)
+    if(reml < bl) {
       quo[0] = 0;
-    else {
+    } else {
       quo[0] = (int)(reml / bl);
       rem    = (int)(reml % bl);
     }
@@ -57,12 +57,15 @@ final class Division {
     final int   dl = (int)(b & LONG);
 
     int qhat;
-    for(int i = 0; i < alen - 1; i++)
-      if((qhat = D3(i, rem, dh, dhl, dl)) != 0)
+    for(int i = 0; i < alen - 1; i++) {
+      if((qhat = D3(i, rem, dh, dhl, dl)) != 0) {
         quo[i] = D4_D5(i, rem, dh, dl, qhat);
+      }
+    }
 
-    if(0 < places)
+    if(0 < places) {
       rshift(rem, places);
+    }
 
     return new int[][]{quo, rem};
   }
@@ -100,12 +103,15 @@ final class Division {
     final long dhl = dh & LONG;
 
     int qhat;
-    for(int i = 0; i < qints; i++)
-      if((qhat = D3(i, rem, dh, dhl, dl)) != 0)
+    for(int i = 0; i < qints; i++) {
+      if((qhat = D3(i, rem, dh, dhl, dl)) != 0) {
         quo[i] = D4_D5(i, rem, div, qhat);
+      }
+    }
 
-    if(0 < places)
+    if(0 < places) {
       rshift(rem, places);
+    }
 
     return new int[][]{quo, rem};
   }
@@ -143,8 +149,9 @@ final class Division {
         if(dhl <= (qrem & LONG)) {
           est -= (dl    & LONG);
           rs   = ((qrem & LONG) << 32) | nl;
-          if(0 < Long.compareUnsigned(est, rs))
+          if(0 < Long.compareUnsigned(est, rs)) {
             qhat--;
+          }
         }
       }
     }
@@ -225,8 +232,9 @@ final class Division {
   }
 
   private static long divone(final long a, final long b) {
-    if(b == 1)
+    if(b == 1) {
       return (int)a;
+    }
 
     long quo = (a >>> 1) / (b >>> 1);
     long rem = a - quo * b;
@@ -259,18 +267,22 @@ final class Division {
   }
 
   private static void rshift(final int[] a, final int places) {
-    if(a.length == 0)
+    if(a.length == 0) {
       return;
+    }
     final int bits = places & 0x1F;
-    if(bits == 0)
+    if(bits == 0) {
       return;
+    }
     if(Integer.bitCount(a[0]) <= bits) {
       lshunt(a, 32 - bits);
-      for(int ai = a.length - 1; 0 < ai; ai--)
+      for(int ai = a.length - 1; 0 < ai; ai--) {
         a[ai] = a[ai - 1];
+      }
       a[0] = 0;
-    } else
+    } else {
       rshunt(a, bits);
+    }
   }
 
   private static void copyshift(

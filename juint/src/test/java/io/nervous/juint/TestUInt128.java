@@ -8,6 +8,8 @@ import static org.junit.Assert.assertArrayEquals;
 
 public class TestUInt128 extends Properties<UInt128> {
   UInt128 construct(int[] ints)   { return new UInt128(ints);  }
+  UInt128 constructMutable(int[] ints) { return UInt128.mutable(ints); }
+  UInt128 constructMutable(long  v)    { return UInt128.mutable(v); }
   UInt128 construct(byte[] bytes) { return new UInt128(bytes); }
   UInt128 construct(BigInteger b) { return new UInt128(b);     }
   UInt128 construct(long   v)     { return new UInt128(v);     }

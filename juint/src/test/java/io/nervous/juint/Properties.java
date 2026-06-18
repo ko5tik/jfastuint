@@ -20,6 +20,8 @@ import static org.junit.Assert.assertFalse;
 
 public abstract class Properties<T extends UInt<T>> {
   abstract T   construct(int[]      ints);
+  abstract T   constructMutable(int[] ints);
+  abstract T   constructMutable(long  v);
   abstract T   construct(byte[]     bytes);
   abstract T   construct(BigInteger b);
   abstract T   construct(long       v);
@@ -183,6 +185,19 @@ public abstract class Properties<T extends UInt<T>> {
   public void not() {
     for(int i = 0; i < SAMPLE_BIG; i++, cycle())
       eq(trunc(xb.not()), x.not());
+  }
+
+  @Test
+  public void notInPlace() {
+    for(int i = 0; i < SAMPLE_BIG; i++, cycle()) {
+      int[] ints = x.toIntArray();
+      int[] expected = new int[ints.length];
+      for (int j = 0; j < ints.length; j++) {
+        expected[j] = ~ints[j];
+      }
+      Arrays.not(ints);
+      assertArrayEquals(expected, ints);
+    }
   }
 
   @Test
@@ -814,6 +829,246 @@ public abstract class Properties<T extends UInt<T>> {
     for(int i = 0; i < SAMPLE_BIG; i++, cycle()) {
       eq(xb.max(yb), x.max(y));
       eq(xb.min(yb), x.min(y));
+    }
+  }
+
+  @Test
+  public void testMNot() {
+    for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      T mx = constructMutable(x.toIntArray());
+      boolean overflow = mx.mNot();
+      assertFalse(overflow);
+      eq(trunc(xb.not()), mx);
+    }
+  }
+
+  @Test
+  public void testMAnd() {
+    for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      T mx = constructMutable(x.toIntArray());
+      boolean overflow = mx.mAnd(y);
+      assertFalse(overflow);
+      eq(xb.and(yb), mx);
+    }
+  }
+
+  @Test
+  public void testMOr() {
+    for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      T mx = constructMutable(x.toIntArray());
+      boolean overflow = mx.mOr(y);
+      assertFalse(overflow);
+      eq(xb.or(yb), mx);
+    }
+  }
+
+  @Test
+  public void testMXor() {
+    for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      T mx = constructMutable(x.toIntArray());
+      boolean overflow = mx.mXor(y);
+      assertFalse(overflow);
+      eq(xb.xor(yb), mx);
+    }
+  }
+
+  @Test
+  public void testMSetBit() {
+    for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      int bit = rnd.nextInt(maxWidth() * 32 + 10);
+      T mx = constructMutable(x.toIntArray());
+      boolean overflow = mx.mSetBit(bit);
+      boolean expectedOverflow = bit >= maxWidth() * 32;
+      assertEquals(expectedOverflow, overflow);
+      if (!overflow) {
+        eq(xb.setBit(bit), mx);
+      }
+    }
+  }
+
+  @Test
+  public void testMClearBit() {
+    for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      int bit = rnd.nextInt(maxWidth() * 32 + 10);
+      T mx = constructMutable(x.toIntArray());
+      boolean overflow = mx.mClearBit(bit);
+      boolean expectedOverflow = bit >= maxWidth() * 32;
+      assertEquals(expectedOverflow, overflow);
+      if (!overflow) {
+        eq(xb.clearBit(bit), mx);
+      }
+    }
+  }
+
+  @Test
+  public void testMFlipBit() {
+    for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      int bit = rnd.nextInt(maxWidth() * 32 + 10);
+      T mx = constructMutable(x.toIntArray());
+      boolean overflow = mx.mFlipBit(bit);
+      boolean expectedOverflow = bit >= maxWidth() * 32;
+      assertEquals(expectedOverflow, overflow);
+      if (!overflow) {
+        eq(xb.flipBit(bit), mx);
+      }
+    }
+  }
+
+  @Test
+  public void testMShiftLeft() {
+    for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      int places = rnd.nextInt(maxWidth() * 32 + 10);
+      T mx = constructMutable(x.toIntArray());
+      boolean overflow = mx.mShiftLeft(places);
+      boolean expectedOverflow;
+      if (places >= maxWidth() * 32) {
+        expectedOverflow = !x.isZero();
+      } else {
+        expectedOverflow = xb.shiftLeft(places).shiftRight(maxWidth() * 32).signum() != 0;
+      }
+      assertEquals(expectedOverflow, overflow);
+      eq(trunc(xb.shiftLeft(places)), mx);
+    }
+  }
+
+  @Test
+  public void testMShiftRight() {
+    for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      int places = rnd.nextInt(maxWidth() * 32 + 10);
+      T mx = constructMutable(x.toIntArray());
+      boolean overflow = mx.mShiftRight(places);
+      boolean expectedOverflow;
+      if (places >= maxWidth() * 32) {
+        expectedOverflow = !x.isZero();
+      } else {
+        expectedOverflow = xb.and(BigInteger.ONE.shiftLeft(places).subtract(BigInteger.ONE)).signum() != 0;
+      }
+      assertEquals(expectedOverflow, overflow);
+      eq(xb.shiftRight(places), mx);
+    }
+  }
+
+  @Test
+  public void testMInc() {
+    for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      T mx = constructMutable(x.toIntArray());
+      boolean overflow = mx.mInc();
+      boolean expectedOverflow = xb.add(BigInteger.ONE).bitLength() > maxWidth() * 32;
+      assertEquals(expectedOverflow, overflow);
+      eq(trunc(xb.add(BigInteger.ONE)), mx);
+    }
+  }
+
+  @Test
+  public void testMDec() {
+    for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      T mx = constructMutable(x.toIntArray());
+      boolean overflow = mx.mDec();
+      boolean expectedOverflow = xb.equals(BigInteger.ZERO);
+      assertEquals(expectedOverflow, overflow);
+      if (expectedOverflow) {
+        BigInteger expectedVal = BigInteger.ONE.shiftLeft(maxWidth() * 32).subtract(BigInteger.ONE);
+        eq(expectedVal, mx);
+      } else {
+        eq(xb.subtract(BigInteger.ONE), mx);
+      }
+    }
+  }
+
+  @Test
+  public void testMAdd() {
+    for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      T mx = constructMutable(x.toIntArray());
+      boolean overflow = mx.mAdd(y);
+      boolean expectedOverflow = xb.add(yb).bitLength() > maxWidth() * 32;
+      assertEquals(expectedOverflow, overflow);
+      eq(trunc(xb.add(yb)), mx);
+    }
+  }
+
+  @Test
+  public void testMSubtract() {
+    for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      T mx = constructMutable(x.toIntArray());
+      boolean overflow = mx.mSubtract(y);
+      boolean expectedOverflow = xb.compareTo(yb) < 0;
+      assertEquals(expectedOverflow, overflow);
+      if (expectedOverflow) {
+        BigInteger expectedVal = xb.subtract(yb).add(BigInteger.ONE.shiftLeft(maxWidth() * 32));
+        eq(expectedVal, mx);
+      } else {
+        eq(xb.subtract(yb), mx);
+      }
+    }
+  }
+
+  @Test
+  public void testMMultiply() {
+    for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      T mx = constructMutable(x.toIntArray());
+      boolean overflow = mx.mMultiply(y);
+      boolean expectedOverflow = xb.multiply(yb).bitLength() > maxWidth() * 32;
+      assertEquals(expectedOverflow, overflow);
+      eq(trunc(xb.multiply(yb)), mx);
+    }
+  }
+
+  @Test
+  public void testMAddMod() {
+    for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      T zNonZero = randomNonZero();
+      BigInteger zb = zNonZero.toBigInteger();
+      T mx = constructMutable(x.toIntArray());
+      boolean overflow = mx.mAddMod(y, zNonZero);
+      assertFalse(overflow);
+      eq(xb.add(yb).mod(zb), mx);
+    }
+  }
+
+  @Test
+  public void testMMulMod() {
+    for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      T zNonZero = randomNonZero();
+      BigInteger zb = zNonZero.toBigInteger();
+      T mx = constructMutable(x.toIntArray());
+      boolean overflow = mx.mMulMod(y, zNonZero);
+      assertFalse(overflow);
+      eq(xb.multiply(yb).mod(zb), mx);
+    }
+  }
+
+  @Test
+  public void testMPow() {
+    for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      int exp = rnd.nextInt(5);
+      T mx = constructMutable(x.toIntArray());
+      boolean overflow = mx.mPow(exp);
+      BigInteger expectedBig = xb.pow(exp);
+      boolean expectedOverflow = expectedBig.bitLength() > maxWidth() * 32;
+      assertEquals(expectedOverflow, overflow);
+      eq(trunc(expectedBig), mx);
+    }
+  }
+
+  @Test
+  public void testMDivide() {
+    for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      if (y.isZero()) continue;
+      T mx = constructMutable(x.toIntArray());
+      boolean overflow = mx.mDivide(y);
+      assertFalse(overflow);
+      eq(xb.divide(yb), mx);
+    }
+  }
+
+  @Test
+  public void testMMod() {
+    for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      if (y.isZero()) continue;
+      T mx = constructMutable(x.toIntArray());
+      boolean overflow = mx.mMod(y);
+      assertFalse(overflow);
+      eq(xb.mod(yb), mx);
     }
   }
 }

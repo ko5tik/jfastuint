@@ -28,6 +28,9 @@
       <organization>Nervous Systems, Ltd.</organization>
       <organizationUrl>https://nervous.io</organizationUrl>
     </developer>
+    <developer>
+      <name>Konstantin Pribluda</name>
+    </developer>
   </developers>
 
   <scm>

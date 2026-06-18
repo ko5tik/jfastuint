@@ -101,22 +101,25 @@ public final class UInt256 extends UInt<UInt256> {
   }
 
   public UInt256 setBit(final int bit) {
-    if(bit < 0)
+    if(bit < 0) {
       throw new ArithmeticException("Negative bit address");
+    }
     return ((MAX_WIDTH <= bit >>> 5) ? this :
             new UInt256(Arrays.setBit(ints, bit)));
   }
 
   public UInt256 clearBit(final int bit) {
-    if(bit < 0)
+    if(bit < 0) {
       throw new ArithmeticException("Negative bit address");
+    }
     return ((ints.length <= bit >>> 5) ? this :
             new UInt256(Arrays.clearBit(ints, bit)));
   }
 
   public UInt256 flipBit(final int bit) {
-     if(bit < 0)
+     if(bit < 0) {
        throw new ArithmeticException("Negative bit address");
+     }
      return ((MAX_WIDTH <= bit >>> 5) ? this :
              new UInt256(Arrays.flipBit(ints, bit)));
   }
@@ -150,16 +153,19 @@ public final class UInt256 extends UInt<UInt256> {
   }
 
   public UInt256 addmod(final UInt256 add, final UInt256 mod) {
-    if(mod.isZero())
+    if(mod.isZero()) {
       throw new ArithmeticException("div/mod by zero");
-    if(isZero() && add.isZero())
+    }
+    if(isZero() && add.isZero()) {
       return ZERO;
+    }
     return new UInt256(Arrays.addmod(ints, add.ints, mod.ints));
   }
 
   public UInt256 subtract(final UInt256 other) {
-    if(other.isZero())
+    if(other.isZero()) {
       return this;
+    }
     final int cmp = compareTo(other);
     return (cmp == 0 ? ZERO :
             new UInt256(
@@ -169,33 +175,40 @@ public final class UInt256 extends UInt<UInt256> {
   }
 
   public UInt256 multiply(final UInt256 other) {
-    if(ints.length == 0 || other.ints.length == 0)
+    if(ints.length == 0 || other.ints.length == 0) {
       return ZERO;
+    }
     return new UInt256(Arrays.multiply(ints, other.ints, MAX_WIDTH));
   }
 
   public UInt256 mulmod(final UInt256 mul, final UInt256 mod) {
-    if(mod.isZero())
+    if(mod.isZero()) {
       throw new ArithmeticException("div/mod by zero");
+    }
     return new UInt256(Arrays.mulmod(ints, mul.ints, mod.ints));
   }
 
   public UInt256 pow(final int exp) {
-    if(exp < 0)
+    if(exp < 0) {
       throw new ArithmeticException("Negative exponent");
-    if(exp == 0)
+    }
+    if(exp == 0) {
       return ONE;
-    if(isZero())
+    }
+    if(isZero()) {
       return this;
+    }
     return (exp == 1 ? this :
             new UInt256(Arrays.pow(ints, getLowestSetBit(), exp, MAX_WIDTH)));
   }
 
   public UInt256 divide(final UInt256 other) {
-    if(other.isZero())
+    if(other.isZero()) {
       throw new ArithmeticException("div/mod by zero");
-    if(isZero())
+    }
+    if(isZero()) {
       return ZERO;
+    }
     final int cmp = compareTo(other);
     return (cmp  <  0 ? ZERO :
             (cmp == 0 ? ONE  :
@@ -203,10 +216,12 @@ public final class UInt256 extends UInt<UInt256> {
   }
 
   public UInt256 mod(final UInt256 other) {
-    if(other.isZero())
+    if(other.isZero()) {
       throw new ArithmeticException("div/mod by zero");
-    if(isZero())
+    }
+    if(isZero()) {
       return ZERO;
+    }
     final int cmp = compareTo(other);
     return (cmp  <  0 ? this :
             (cmp == 0 ? ZERO :
@@ -214,23 +229,138 @@ public final class UInt256 extends UInt<UInt256> {
   }
 
   public UInt256[] divmod(final UInt256 other) {
-    if(other.isZero())
+    if(other.isZero()) {
       throw new ArithmeticException("div/mod by zero");
-    if(isZero())
+    }
+    if(isZero()) {
       return new UInt256[]{ZERO, ZERO};
+    }
     final int cmp = compareTo(other);
-    if(cmp < 0)
+    if(cmp < 0) {
       return new UInt256[]{ZERO, this};
-    if(cmp == 0)
+    }
+    if(cmp == 0) {
       return new UInt256[]{ONE, ZERO};
+    }
 
     final int[][] qr = Arrays.divmod(ints, other.ints);
     return new UInt256[]{new UInt256(qr[0]), new UInt256(qr[1])};
   }
 
   public boolean equals(final Object other) {
-    if(other instanceof BigInteger)
-      return Arrays.compare(ints, (BigInteger)other, MAX_WIDTH) == 0;
+    if(other instanceof BigInteger) {
+      return this.toBigInteger().equals(other);
+    }
     return super.equals(other);
+  }
+
+  public static UInt256 mutable(final int[] ints) {
+    int[] padded = new int[MAX_WIDTH];
+    int len = Math.min(ints.length, MAX_WIDTH);
+    System.arraycopy(ints, ints.length - len, padded, MAX_WIDTH - len, len);
+    return new UInt256(padded, false);
+  }
+
+  public static UInt256 mutable(final long v) {
+    return mutable(Arrays.valueOf(v));
+  }
+
+  private UInt256(final int[] ints, final boolean dummy) {
+    super(ints);
+  }
+
+  @Override
+  public boolean mNot() {
+    return Arrays.mNot(this.ints);
+  }
+
+  @Override
+  public boolean mAnd(final UInt256 other) {
+    return Arrays.mAnd(this.ints, other.ints);
+  }
+
+  @Override
+  public boolean mOr(final UInt256 other) {
+    return Arrays.mOr(this.ints, other.ints);
+  }
+
+  @Override
+  public boolean mXor(final UInt256 other) {
+    return Arrays.mXor(this.ints, other.ints);
+  }
+
+  @Override
+  public boolean mSetBit(final int bit) {
+    return Arrays.mSetBit(this.ints, bit);
+  }
+
+  @Override
+  public boolean mClearBit(final int bit) {
+    return Arrays.mClearBit(this.ints, bit);
+  }
+
+  @Override
+  public boolean mFlipBit(final int bit) {
+    return Arrays.mFlipBit(this.ints, bit);
+  }
+
+  @Override
+  public boolean mShiftLeft(final int places) {
+    return Arrays.mShiftLeft(this.ints, places);
+  }
+
+  @Override
+  public boolean mShiftRight(final int places) {
+    return Arrays.mShiftRight(this.ints, places);
+  }
+
+  @Override
+  public boolean mInc() {
+    return Arrays.mInc(this.ints);
+  }
+
+  @Override
+  public boolean mDec() {
+    return Arrays.mDec(this.ints);
+  }
+
+  @Override
+  public boolean mAdd(final UInt256 other) {
+    return Arrays.mAdd(this.ints, other.ints);
+  }
+
+  @Override
+  public boolean mSubtract(final UInt256 other) {
+    return Arrays.mSubtract(this.ints, other.ints);
+  }
+
+  @Override
+  public boolean mMultiply(final UInt256 other) {
+    return Arrays.mMultiply(this.ints, other.ints);
+  }
+
+  @Override
+  public boolean mAddMod(final UInt256 add, final UInt256 mod) {
+    return Arrays.mAddMod(this.ints, add.ints, mod.ints);
+  }
+
+  @Override
+  public boolean mMulMod(final UInt256 mul, final UInt256 mod) {
+    return Arrays.mMulMod(this.ints, mul.ints, mod.ints);
+  }
+
+  @Override
+  public boolean mPow(final int exp) {
+    return Arrays.mPow(this.ints, exp);
+  }
+
+  @Override
+  public boolean mDivide(final UInt256 other) {
+    return Arrays.mDivide(this.ints, other.ints);
+  }
+
+  @Override
+  public boolean mMod(final UInt256 other) {
+    return Arrays.mMod(this.ints, other.ints);
   }
 }

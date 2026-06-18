@@ -130,11 +130,126 @@ public abstract class UInt<T extends UInt>
   public abstract T flipBit(int bit);
 
   /**
+   * Performs a bitwise NOT operation in-place, modifying the backing array.
+   * @return true if an overflow occurred, false otherwise.
+   */
+  public abstract boolean mNot();
+
+  /**
+   * Performs a bitwise AND operation in-place with the specified value, modifying the backing array.
+   * @return true if an overflow/out-of-bounds occurred, false otherwise.
+   */
+  public abstract boolean mAnd(T other);
+
+  /**
+   * Performs a bitwise OR operation in-place with the specified value, modifying the backing array.
+   * @return true if an overflow/out-of-bounds occurred, false otherwise.
+   */
+  public abstract boolean mOr(T other);
+
+  /**
+   * Performs a bitwise XOR operation in-place with the specified value, modifying the backing array.
+   * @return true if an overflow/out-of-bounds occurred, false otherwise.
+   */
+  public abstract boolean mXor(T other);
+
+  /**
+   * Sets the specified bit in-place, modifying the backing array.
+   * @return true if the bit index is out of bounds for the backing array, false otherwise.
+   */
+  public abstract boolean mSetBit(int bit);
+
+  /**
+   * Clears the specified bit in-place, modifying the backing array.
+   * @return true if the bit index is out of bounds for the backing array, false otherwise.
+   */
+  public abstract boolean mClearBit(int bit);
+
+  /**
+   * Flips the specified bit in-place, modifying the backing array.
+   * @return true if the bit index is out of bounds for the backing array, false otherwise.
+   */
+  public abstract boolean mFlipBit(int bit);
+
+  /**
+   * Shifts the bits left by the specified number of places in-place, modifying the backing array.
+   * @return true if any non-zero bits were shifted out (overflow), false otherwise.
+   */
+  public abstract boolean mShiftLeft(int places);
+
+  /**
+   * Shifts the bits right by the specified number of places in-place, modifying the backing array.
+   * @return true if any non-zero bits were shifted out (underflow), false otherwise.
+   */
+  public abstract boolean mShiftRight(int places);
+
+  /**
+   * Increments the value in-place by 1, modifying the backing array.
+   * @return true if a carry/overflow occurred, false otherwise.
+   */
+  public abstract boolean mInc();
+
+  /**
+   * Decrements the value in-place by 1, modifying the backing array.
+   * @return true if an underflow occurred, false otherwise.
+   */
+  public abstract boolean mDec();
+
+  /**
+   * Adds the specified value to this value in-place, modifying the backing array.
+   * @return true if a carry/overflow occurred, false otherwise.
+   */
+  public abstract boolean mAdd(T other);
+
+  /**
+   * Adds the specified value to this value, modulo mod, in-place, modifying the backing array.
+   * @return true if a carry/overflow/underflow occurred, false otherwise.
+   */
+  public abstract boolean mAddMod(T add, T mod);
+
+  /**
+   * Subtracts the specified value from this value in-place, modifying the backing array.
+   * @return true if a borrow/underflow occurred, false otherwise.
+   */
+  public abstract boolean mSubtract(T other);
+
+  /**
+   * Multiplies this value by the specified value in-place, modifying the backing array.
+   * @return true if a carry/overflow occurred, false otherwise.
+   */
+  public abstract boolean mMultiply(T other);
+
+  /**
+   * Multiplies this value by the specified value, modulo mod, in-place, modifying the backing array.
+   * @return true if a carry/overflow/underflow occurred, false otherwise.
+   */
+  public abstract boolean mMulMod(T mul, T mod);
+
+  /**
+   * Raises this value to the specified power in-place, modifying the backing array.
+   * @return true if a carry/overflow occurred, false otherwise.
+   */
+  public abstract boolean mPow(int exp);
+
+  /**
+   * Divides this value by the specified value in-place, modifying the backing array.
+   * @return true if an overflow occurred, false otherwise.
+   */
+  public abstract boolean mDivide(T other);
+
+  /**
+   * Takes the remainder when this value is divided by the specified value in-place, modifying the backing array.
+   * @return true if an overflow occurred, false otherwise.
+   */
+  public abstract boolean mMod(T other);
+
+  /**
    * {@code (this & (1 << bit)) != 0}
    */
   public final boolean testBit(final int bit) {
-    if(bit < 0)
+    if(bit < 0) {
       throw new ArithmeticException("Negative bit address");
+    }
     final int i = bit >>> 5;
     return i < ints.length && 0 != (ints[ints.length - i - 1] & (1 << (bit & 31)));
   }
@@ -153,14 +268,20 @@ public abstract class UInt<T extends UInt>
    * Count the number of bits required to represent this number in binary.
    */
   public final int bitLength() {
-    return Arrays.bitLength(ints);
+    int firstNonZero = 0;
+    while (firstNonZero < ints.length && ints[firstNonZero] == 0) {
+      firstNonZero++;
+    }
+    if (firstNonZero == ints.length) return 0;
+    int activeLen = ints.length - firstNonZero;
+    return ((activeLen - 1) * 32) + (32 - Integer.numberOfLeadingZeros(ints[firstNonZero]));
   }
 
   /**
    * {@code this == 0}
    */
   public final boolean isZero() {
-    return ints.length == 0;
+    return Arrays.isZero(ints);
   }
 
   /**
@@ -168,9 +289,11 @@ public abstract class UInt<T extends UInt>
    */
   public final int getLowestSetBit() {
     final int start = ints.length - 1;
-    for(int i = start; 0 <= i; i--)
-      if(ints[i] != 0)
+    for(int i = start; 0 <= i; i--) {
+      if(ints[i] != 0) {
         return (start - i) * 32 + Integer.numberOfTrailingZeros(ints[i]);
+      }
+    }
     return -1;
   }
 
@@ -178,22 +301,46 @@ public abstract class UInt<T extends UInt>
    * Return a hash code identical to the equivalent OpenJDK {@code BigInteger}.
    */
   public int hashCode() {
+    int firstNonZero = 0;
+    while (firstNonZero < ints.length && ints[firstNonZero] == 0) {
+      firstNonZero++;
+    }
+    if (firstNonZero == ints.length) return 0;
     int out = 0;
-
-    for(int i = 0; i < ints.length; i++)
+    for (int i = firstNonZero; i < ints.length; i++) {
       out = (int)(31*out + (ints[i] & LONG));
-
+    }
     return out;
   }
 
   public boolean equals(final Object other) {
-    if(other instanceof UInt)
-      return Arrays.compare(ints, ((UInt)other).ints) == 0;
+    if(other instanceof UInt) {
+      return compareTo((T)other) == 0;
+    }
     return false;
   }
 
   public final int compareTo(final T other) {
-    return Arrays.compare(ints, other.ints);
+    int thisStart = 0;
+    while (thisStart < this.ints.length && this.ints[thisStart] == 0) {
+      thisStart++;
+    }
+    int otherStart = 0;
+    while (otherStart < other.ints.length && other.ints[otherStart] == 0) {
+      otherStart++;
+    }
+    int thisLen = this.ints.length - thisStart;
+    int otherLen = other.ints.length - otherStart;
+    if (thisLen < otherLen) return -1;
+    if (thisLen > otherLen) return 1;
+    for (int i = 0; i < thisLen; i++) {
+      int aVal = this.ints[thisStart + i];
+      int bVal = other.ints[otherStart + i];
+      if (aVal != bVal) {
+        return Integer.compareUnsigned(aVal, bVal);
+      }
+    }
+    return 0;
   }
 
   /**
@@ -218,8 +365,9 @@ public abstract class UInt<T extends UInt>
 
   public final long longValue() {
     final int len = ints.length;
-    if(len == 0)
+    if(len == 0) {
       return 0;
+    }
     final long out = ints[len - 1] & LONG;
     return ints.length == 1 ? out : ((ints[len - 2] & LONG) << 32 | out);
   }
@@ -235,41 +383,41 @@ public abstract class UInt<T extends UInt>
   }
 
   public final int intValueExact() {
-    if(ints.length <= 1 && bitLength() < 32)
+    if(bitLength() < 32) {
       return intValue();
+    }
     throw new ArithmeticException("Out of int range");
   }
 
   public final long longValueExact() {
-    if(ints.length <= 2 && bitLength() < 64)
+    if(bitLength() < 64) {
       return longValue();
+    }
     throw new ArithmeticException("Out of long range");
   }
 
   public final short shortValueExact() {
-    if(ints.length <= 1 && bitLength() < 32) {
+    if(bitLength() < 32) {
       final int v = intValue();
-      if(Short.MIN_VALUE <= v && v <= Short.MAX_VALUE)
+      if(Short.MIN_VALUE <= v && v <= Short.MAX_VALUE) {
         return shortValue();
+      }
     }
     throw new ArithmeticException("Out of short range");
   }
 
   public final byte byteValueExact() {
-    if(ints.length <= 1 && bitLength() < 32) {
+    if(bitLength() < 32) {
       final int v = intValue();
-      if(Byte.MIN_VALUE <= v && v <= Byte.MAX_VALUE)
+      if(Byte.MIN_VALUE <= v && v <= Byte.MAX_VALUE) {
         return byteValue();
+      }
     }
     throw new ArithmeticException("Out of byte range");
   }
 
   public final BigInteger toBigInteger() {
-    BigInteger out = BigInteger.ZERO;
-    for(int i = 0; i < ints.length; i++) {
-      out = out.shiftLeft(32).or(BigInteger.valueOf(ints[i] & LONG));
-    }
-    return out;
+    return Arrays.toBigInteger(ints);
   }
 
   /**
@@ -306,17 +454,22 @@ public abstract class UInt<T extends UInt>
    * {@code Character.MAX_RADIX} are substituted with {@code 10}.
    */
   public final String toString(int radix) {
-    if(isZero())
+    if(isZero()) {
       return "0";
+    }
 
-    if(radix < Character.MIN_RADIX || Character.MAX_RADIX < radix)
+    if(radix < Character.MIN_RADIX || Character.MAX_RADIX < radix) {
       radix = DEFAULT_RADIX;
+    }
 
-    if(ints.length == 1)
-      return Integer.toUnsignedString(ints[0], radix);
-    if(ints.length == 2)
-      return Long.toUnsignedString(((ints[0] & LONG) << 32) | (ints[1] & LONG), radix);
+    final int[] stripped = Arrays.stripLeadingZeroes(ints);
+    if(stripped.length == 1) {
+      return Integer.toUnsignedString(stripped[0], radix);
+    }
+    if(stripped.length == 2) {
+      return Long.toUnsignedString(((stripped[0] & LONG) << 32) | (stripped[1] & LONG), radix);
+    }
 
-    return StringUtil.toString(ints, radix);
+    return StringUtil.toString(stripped, radix);
   }
 }
