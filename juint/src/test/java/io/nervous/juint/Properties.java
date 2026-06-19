@@ -836,7 +836,8 @@ public abstract class Properties<T extends UInt<T>> {
   public void testMNot() {
     for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
       T mx = constructMutable(x.toIntArray());
-      boolean overflow = mx.mNot();
+      mx.mNot();
+      boolean overflow = mx.overflow();
       assertFalse(overflow);
       eq(trunc(xb.not()), mx);
     }
@@ -846,7 +847,8 @@ public abstract class Properties<T extends UInt<T>> {
   public void testMAnd() {
     for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
       T mx = constructMutable(x.toIntArray());
-      boolean overflow = mx.mAnd(y);
+      mx.mAnd(y);
+      boolean overflow = mx.overflow();
       assertFalse(overflow);
       eq(xb.and(yb), mx);
     }
@@ -856,7 +858,8 @@ public abstract class Properties<T extends UInt<T>> {
   public void testMOr() {
     for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
       T mx = constructMutable(x.toIntArray());
-      boolean overflow = mx.mOr(y);
+      mx.mOr(y);
+      boolean overflow = mx.overflow();
       assertFalse(overflow);
       eq(xb.or(yb), mx);
     }
@@ -866,7 +869,8 @@ public abstract class Properties<T extends UInt<T>> {
   public void testMXor() {
     for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
       T mx = constructMutable(x.toIntArray());
-      boolean overflow = mx.mXor(y);
+      mx.mXor(y);
+      boolean overflow = mx.overflow();
       assertFalse(overflow);
       eq(xb.xor(yb), mx);
     }
@@ -877,7 +881,8 @@ public abstract class Properties<T extends UInt<T>> {
     for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
       int bit = rnd.nextInt(maxWidth() * 32 + 10);
       T mx = constructMutable(x.toIntArray());
-      boolean overflow = mx.mSetBit(bit);
+      mx.mSetBit(bit);
+      boolean overflow = mx.overflow();
       boolean expectedOverflow = bit >= maxWidth() * 32;
       assertEquals(expectedOverflow, overflow);
       if (!overflow) {
@@ -891,7 +896,8 @@ public abstract class Properties<T extends UInt<T>> {
     for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
       int bit = rnd.nextInt(maxWidth() * 32 + 10);
       T mx = constructMutable(x.toIntArray());
-      boolean overflow = mx.mClearBit(bit);
+      mx.mClearBit(bit);
+      boolean overflow = mx.overflow();
       boolean expectedOverflow = bit >= maxWidth() * 32;
       assertEquals(expectedOverflow, overflow);
       if (!overflow) {
@@ -905,7 +911,8 @@ public abstract class Properties<T extends UInt<T>> {
     for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
       int bit = rnd.nextInt(maxWidth() * 32 + 10);
       T mx = constructMutable(x.toIntArray());
-      boolean overflow = mx.mFlipBit(bit);
+      mx.mFlipBit(bit);
+      boolean overflow = mx.overflow();
       boolean expectedOverflow = bit >= maxWidth() * 32;
       assertEquals(expectedOverflow, overflow);
       if (!overflow) {
@@ -919,7 +926,8 @@ public abstract class Properties<T extends UInt<T>> {
     for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
       int places = rnd.nextInt(maxWidth() * 32 + 10);
       T mx = constructMutable(x.toIntArray());
-      boolean overflow = mx.mShiftLeft(places);
+      mx.mShiftLeft(places);
+      boolean overflow = mx.overflow();
       boolean expectedOverflow;
       if (places >= maxWidth() * 32) {
         expectedOverflow = !x.isZero();
@@ -936,7 +944,8 @@ public abstract class Properties<T extends UInt<T>> {
     for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
       int places = rnd.nextInt(maxWidth() * 32 + 10);
       T mx = constructMutable(x.toIntArray());
-      boolean overflow = mx.mShiftRight(places);
+      mx.mShiftRight(places);
+      boolean overflow = mx.overflow();
       boolean expectedOverflow;
       if (places >= maxWidth() * 32) {
         expectedOverflow = !x.isZero();
@@ -952,7 +961,8 @@ public abstract class Properties<T extends UInt<T>> {
   public void testMInc() {
     for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
       T mx = constructMutable(x.toIntArray());
-      boolean overflow = mx.mInc();
+      mx.mInc();
+      boolean overflow = mx.overflow();
       boolean expectedOverflow = xb.add(BigInteger.ONE).bitLength() > maxWidth() * 32;
       assertEquals(expectedOverflow, overflow);
       eq(trunc(xb.add(BigInteger.ONE)), mx);
@@ -963,7 +973,8 @@ public abstract class Properties<T extends UInt<T>> {
   public void testMDec() {
     for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
       T mx = constructMutable(x.toIntArray());
-      boolean overflow = mx.mDec();
+      mx.mDec();
+      boolean overflow = mx.overflow();
       boolean expectedOverflow = xb.equals(BigInteger.ZERO);
       assertEquals(expectedOverflow, overflow);
       if (expectedOverflow) {
@@ -979,7 +990,8 @@ public abstract class Properties<T extends UInt<T>> {
   public void testMAdd() {
     for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
       T mx = constructMutable(x.toIntArray());
-      boolean overflow = mx.mAdd(y);
+      mx.mAdd(y);
+      boolean overflow = mx.overflow();
       boolean expectedOverflow = xb.add(yb).bitLength() > maxWidth() * 32;
       assertEquals(expectedOverflow, overflow);
       eq(trunc(xb.add(yb)), mx);
@@ -990,7 +1002,8 @@ public abstract class Properties<T extends UInt<T>> {
   public void testMSubtract() {
     for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
       T mx = constructMutable(x.toIntArray());
-      boolean overflow = mx.mSubtract(y);
+      mx.mSubtract(y);
+      boolean overflow = mx.overflow();
       boolean expectedOverflow = xb.compareTo(yb) < 0;
       assertEquals(expectedOverflow, overflow);
       if (expectedOverflow) {
@@ -1006,7 +1019,8 @@ public abstract class Properties<T extends UInt<T>> {
   public void testMMultiply() {
     for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
       T mx = constructMutable(x.toIntArray());
-      boolean overflow = mx.mMultiply(y);
+      mx.mMultiply(y);
+      boolean overflow = mx.overflow();
       boolean expectedOverflow = xb.multiply(yb).bitLength() > maxWidth() * 32;
       assertEquals(expectedOverflow, overflow);
       eq(trunc(xb.multiply(yb)), mx);
@@ -1019,7 +1033,8 @@ public abstract class Properties<T extends UInt<T>> {
       T zNonZero = randomNonZero();
       BigInteger zb = zNonZero.toBigInteger();
       T mx = constructMutable(x.toIntArray());
-      boolean overflow = mx.mAddMod(y, zNonZero);
+      mx.mAddMod(y, zNonZero);
+      boolean overflow = mx.overflow();
       assertFalse(overflow);
       eq(xb.add(yb).mod(zb), mx);
     }
@@ -1031,7 +1046,8 @@ public abstract class Properties<T extends UInt<T>> {
       T zNonZero = randomNonZero();
       BigInteger zb = zNonZero.toBigInteger();
       T mx = constructMutable(x.toIntArray());
-      boolean overflow = mx.mMulMod(y, zNonZero);
+      mx.mMulMod(y, zNonZero);
+      boolean overflow = mx.overflow();
       assertFalse(overflow);
       eq(xb.multiply(yb).mod(zb), mx);
     }
@@ -1042,7 +1058,8 @@ public abstract class Properties<T extends UInt<T>> {
     for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
       int exp = rnd.nextInt(5);
       T mx = constructMutable(x.toIntArray());
-      boolean overflow = mx.mPow(exp);
+      mx.mPow(exp);
+      boolean overflow = mx.overflow();
       BigInteger expectedBig = xb.pow(exp);
       boolean expectedOverflow = expectedBig.bitLength() > maxWidth() * 32;
       assertEquals(expectedOverflow, overflow);
@@ -1055,7 +1072,8 @@ public abstract class Properties<T extends UInt<T>> {
     for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
       if (y.isZero()) continue;
       T mx = constructMutable(x.toIntArray());
-      boolean overflow = mx.mDivide(y);
+      mx.mDivide(y);
+      boolean overflow = mx.overflow();
       assertFalse(overflow);
       eq(xb.divide(yb), mx);
     }
@@ -1066,9 +1084,61 @@ public abstract class Properties<T extends UInt<T>> {
     for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
       if (y.isZero()) continue;
       T mx = constructMutable(x.toIntArray());
-      boolean overflow = mx.mMod(y);
+      mx.mMod(y);
+      boolean overflow = mx.overflow();
       assertFalse(overflow);
       eq(xb.mod(yb), mx);
+    }
+  }
+
+  @Test
+  public void testMutableChainingAndReset() {
+    T mx = constructMutable(1L);
+    mx.mInc().mInc().mAdd(constructMutable(5L));
+    eq(BigInteger.valueOf(8), mx);
+    assertFalse(mx.overflow());
+
+    // Trigger overflow
+    T maxVal = constructMutable(max.toIntArray());
+    maxVal.mInc();
+    assertTrue(maxVal.overflow());
+    maxVal.reset();
+    assertFalse(maxVal.overflow());
+  }
+
+  @Test
+  public void testSqrtInvariant() {
+    assertEquals(zero, zero.sqrt());
+    assertEquals(one,  one.sqrt());
+    assertEquals(one,  two.sqrt());
+    assertEquals(one,  fromInt(3).sqrt());
+    assertEquals(two,  fromInt(4).sqrt());
+    assertEquals(two,  fromInt(8).sqrt());
+    assertEquals(fromInt(3), fromInt(9).sqrt());
+  }
+
+  @Test
+  public void testSqrt() {
+    for(int i = 0; i < SAMPLE_BIG; i++, cycle()) {
+      T r = x.sqrt();
+      BigInteger rb = r.toBigInteger();
+      BigInteger r2 = rb.multiply(rb);
+      BigInteger rPlus1 = rb.add(BigInteger.ONE);
+      BigInteger rPlus12 = rPlus1.multiply(rPlus1);
+
+      assertTrue("r^2 <= x failed for x=" + xb + ", r=" + rb, r2.compareTo(xb) <= 0);
+      assertTrue("(r+1)^2 > x failed for x=" + xb + ", r=" + rb, rPlus12.compareTo(xb) > 0);
+    }
+  }
+
+  @Test
+  public void testMSqrt() {
+    for(int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      T mx = constructMutable(x.toIntArray());
+      mx.mSqrt();
+      boolean overflow = mx.overflow();
+      assertFalse(overflow);
+      assertEquals(x.sqrt(), mx);
     }
   }
 }

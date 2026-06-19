@@ -202,6 +202,13 @@ public final class UInt256 extends UInt<UInt256> {
             new UInt256(Arrays.pow(ints, getLowestSetBit(), exp, MAX_WIDTH)));
   }
 
+  public UInt256 sqrt() {
+    if (isZero()) {
+      return ZERO;
+    }
+    return new UInt256(Arrays.sqrt(ints, MAX_WIDTH));
+  }
+
   public UInt256 divide(final UInt256 other) {
     if(other.isZero()) {
       throw new ArithmeticException("div/mod by zero");
@@ -270,97 +277,122 @@ public final class UInt256 extends UInt<UInt256> {
   }
 
   @Override
-  public boolean mNot() {
-    return Arrays.mNot(this.ints);
+  public UInt256 mNot() {
+    this.overflow |= Arrays.mNot(this.ints);
+    return this;
   }
 
   @Override
-  public boolean mAnd(final UInt256 other) {
-    return Arrays.mAnd(this.ints, other.ints);
+  public UInt256 mAnd(final UInt256 other) {
+    this.overflow |= Arrays.mAnd(this.ints, other.ints);
+    return this;
   }
 
   @Override
-  public boolean mOr(final UInt256 other) {
-    return Arrays.mOr(this.ints, other.ints);
+  public UInt256 mOr(final UInt256 other) {
+    this.overflow |= Arrays.mOr(this.ints, other.ints);
+    return this;
   }
 
   @Override
-  public boolean mXor(final UInt256 other) {
-    return Arrays.mXor(this.ints, other.ints);
+  public UInt256 mXor(final UInt256 other) {
+    this.overflow |= Arrays.mXor(this.ints, other.ints);
+    return this;
   }
 
   @Override
-  public boolean mSetBit(final int bit) {
-    return Arrays.mSetBit(this.ints, bit);
+  public UInt256 mSetBit(final int bit) {
+    this.overflow |= Arrays.mSetBit(this.ints, bit);
+    return this;
   }
 
   @Override
-  public boolean mClearBit(final int bit) {
-    return Arrays.mClearBit(this.ints, bit);
+  public UInt256 mClearBit(final int bit) {
+    this.overflow |= Arrays.mClearBit(this.ints, bit);
+    return this;
   }
 
   @Override
-  public boolean mFlipBit(final int bit) {
-    return Arrays.mFlipBit(this.ints, bit);
+  public UInt256 mFlipBit(final int bit) {
+    this.overflow |= Arrays.mFlipBit(this.ints, bit);
+    return this;
   }
 
   @Override
-  public boolean mShiftLeft(final int places) {
-    return Arrays.mShiftLeft(this.ints, places);
+  public UInt256 mShiftLeft(final int places) {
+    this.overflow |= Arrays.mShiftLeft(this.ints, places);
+    return this;
   }
 
   @Override
-  public boolean mShiftRight(final int places) {
-    return Arrays.mShiftRight(this.ints, places);
+  public UInt256 mShiftRight(final int places) {
+    this.overflow |= Arrays.mShiftRight(this.ints, places);
+    return this;
   }
 
   @Override
-  public boolean mInc() {
-    return Arrays.mInc(this.ints);
+  public UInt256 mInc() {
+    this.overflow |= Arrays.mInc(this.ints);
+    return this;
   }
 
   @Override
-  public boolean mDec() {
-    return Arrays.mDec(this.ints);
+  public UInt256 mDec() {
+    this.overflow |= Arrays.mDec(this.ints);
+    return this;
   }
 
   @Override
-  public boolean mAdd(final UInt256 other) {
-    return Arrays.mAdd(this.ints, other.ints);
+  public UInt256 mAdd(final UInt256 other) {
+    this.overflow |= Arrays.mAdd(this.ints, other.ints);
+    return this;
   }
 
   @Override
-  public boolean mSubtract(final UInt256 other) {
-    return Arrays.mSubtract(this.ints, other.ints);
+  public UInt256 mSubtract(final UInt256 other) {
+    this.overflow |= Arrays.mSubtract(this.ints, other.ints);
+    return this;
   }
 
   @Override
-  public boolean mMultiply(final UInt256 other) {
-    return Arrays.mMultiply(this.ints, other.ints);
+  public UInt256 mMultiply(final UInt256 other) {
+    this.overflow |= Arrays.mMultiply(this.ints, other.ints);
+    return this;
   }
 
   @Override
-  public boolean mAddMod(final UInt256 add, final UInt256 mod) {
-    return Arrays.mAddMod(this.ints, add.ints, mod.ints);
+  public UInt256 mAddMod(final UInt256 add, final UInt256 mod) {
+    this.overflow |= Arrays.mAddMod(this.ints, add.ints, mod.ints);
+    return this;
   }
 
   @Override
-  public boolean mMulMod(final UInt256 mul, final UInt256 mod) {
-    return Arrays.mMulMod(this.ints, mul.ints, mod.ints);
+  public UInt256 mMulMod(final UInt256 mul, final UInt256 mod) {
+    this.overflow |= Arrays.mMulMod(this.ints, mul.ints, mod.ints);
+    return this;
   }
 
   @Override
-  public boolean mPow(final int exp) {
-    return Arrays.mPow(this.ints, exp);
+  public UInt256 mPow(final int exp) {
+    this.overflow |= Arrays.mPow(this.ints, exp);
+    return this;
   }
 
   @Override
-  public boolean mDivide(final UInt256 other) {
-    return Arrays.mDivide(this.ints, other.ints);
+  public UInt256 mSqrt() {
+    this.overflow |= Arrays.mSqrt(this.ints);
+    return this;
   }
 
   @Override
-  public boolean mMod(final UInt256 other) {
-    return Arrays.mMod(this.ints, other.ints);
+  public UInt256 mDivide(final UInt256 other) {
+    this.overflow |= Arrays.mDivide(this.ints, other.ints);
+    return this;
+  }
+
+  @Override
+  public UInt256 mMod(final UInt256 other) {
+    this.overflow |= Arrays.mMod(this.ints, other.ints);
+    return this;
   }
 }

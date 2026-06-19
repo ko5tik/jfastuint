@@ -715,9 +715,13 @@ final class Arrays {
     }
 
     static int bitLength(int a[]) {
-        return (a.length == 0 ?
-                0 :
-                ((a.length - 1) * 32) + (32 - Integer.numberOfLeadingZeros(a[0])));
+        int firstNonZero = 0;
+        while (firstNonZero < a.length && a[firstNonZero] == 0) {
+            firstNonZero++;
+        }
+        if (firstNonZero == a.length) return 0;
+        int activeLen = a.length - firstNonZero;
+        return ((activeLen - 1) * 32) + (32 - Integer.numberOfLeadingZeros(a[firstNonZero]));
     }
 
     static int[] square(final int[] a, final int maxWidth) {
@@ -1394,6 +1398,43 @@ final class Arrays {
     static boolean mMod(final int[] ints, final int[] other) {
         if (isZero(other)) throw new ArithmeticException("modulo by zero");
         mModInPlace(ints, other);
+        return false;
+    }
+
+    static int[] sqrt(final int[] a, final int maxWidth) {
+        if (isZero(a)) {
+            return ZERO;
+        }
+        int bitLen = bitLength(a);
+        int guessShift = (bitLen + 1) / 2;
+        int[] x = setBit(ZERO, guessShift);
+
+        while (true) {
+            int[] divRes;
+            if (compareActive(a, x) < 0) {
+                divRes = ZERO;
+            } else {
+                divRes = divide(a, x);
+            }
+            int[] sum = add(x, divRes, -1);
+            int[] next = rshift(sum, 1, -1);
+
+            if (compareActive(next, x) >= 0) {
+                break;
+            }
+            x = next;
+        }
+        return x[0] == 0 ? stripLeadingZeroes(x) : x;
+    }
+
+    static boolean mSqrt(final int[] ints) {
+        if (isZero(ints)) {
+            return false;
+        }
+        int[] res = sqrt(ints, ints.length);
+        java.util.Arrays.fill(ints, 0);
+        int copyLen = Math.min(res.length, ints.length);
+        System.arraycopy(res, res.length - copyLen, ints, ints.length - copyLen, copyLen);
         return false;
     }
 }

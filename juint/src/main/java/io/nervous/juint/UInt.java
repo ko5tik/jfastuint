@@ -8,6 +8,15 @@ public abstract class UInt<T extends UInt>
   implements Comparable<T> {
 
   final int[] ints;
+  boolean overflow;
+
+  public final boolean overflow() { return overflow; }
+  public final boolean getOverflow() { return overflow; }
+
+  @SuppressWarnings("unchecked")
+  public final T reset() { this.overflow = false; return (T) this; }
+  @SuppressWarnings("unchecked")
+  public final T mReset() { this.overflow = false; return (T) this; }
 
   /* toString */
   static final int DEFAULT_RADIX = 10;
@@ -77,6 +86,10 @@ public abstract class UInt<T extends UInt>
    */
   public abstract T pow(int exp);
   /**
+   * {@code sqrt(this)}
+   */
+  public abstract T sqrt();
+  /**
    * {@code ~this}
    */
   public abstract T not();
@@ -141,117 +154,123 @@ public abstract class UInt<T extends UInt>
 
   /**
    * Performs a bitwise NOT operation in-place, modifying the backing array.
-   * @return true if an overflow occurred, false otherwise.
+   * @return this object for chaining.
    */
-  public abstract boolean mNot();
+  public abstract T mNot();
 
   /**
    * Performs a bitwise AND operation in-place with the specified value, modifying the backing array.
-   * @return true if an overflow/out-of-bounds occurred, false otherwise.
+   * @return this object for chaining.
    */
-  public abstract boolean mAnd(T other);
+  public abstract T mAnd(T other);
 
   /**
    * Performs a bitwise OR operation in-place with the specified value, modifying the backing array.
-   * @return true if an overflow/out-of-bounds occurred, false otherwise.
+   * @return this object for chaining.
    */
-  public abstract boolean mOr(T other);
+  public abstract T mOr(T other);
 
   /**
    * Performs a bitwise XOR operation in-place with the specified value, modifying the backing array.
-   * @return true if an overflow/out-of-bounds occurred, false otherwise.
+   * @return this object for chaining.
    */
-  public abstract boolean mXor(T other);
+  public abstract T mXor(T other);
 
   /**
    * Sets the specified bit in-place, modifying the backing array.
-   * @return true if the bit index is out of bounds for the backing array, false otherwise.
+   * @return this object for chaining.
    */
-  public abstract boolean mSetBit(int bit);
+  public abstract T mSetBit(int bit);
 
   /**
    * Clears the specified bit in-place, modifying the backing array.
-   * @return true if the bit index is out of bounds for the backing array, false otherwise.
+   * @return this object for chaining.
    */
-  public abstract boolean mClearBit(int bit);
+  public abstract T mClearBit(int bit);
 
   /**
    * Flips the specified bit in-place, modifying the backing array.
-   * @return true if the bit index is out of bounds for the backing array, false otherwise.
+   * @return this object for chaining.
    */
-  public abstract boolean mFlipBit(int bit);
+  public abstract T mFlipBit(int bit);
 
   /**
    * Shifts the bits left by the specified number of places in-place, modifying the backing array.
-   * @return true if any non-zero bits were shifted out (overflow), false otherwise.
+   * @return this object for chaining.
    */
-  public abstract boolean mShiftLeft(int places);
+  public abstract T mShiftLeft(int places);
 
   /**
    * Shifts the bits right by the specified number of places in-place, modifying the backing array.
-   * @return true if any non-zero bits were shifted out (underflow), false otherwise.
+   * @return this object for chaining.
    */
-  public abstract boolean mShiftRight(int places);
+  public abstract T mShiftRight(int places);
 
   /**
    * Increments the value in-place by 1, modifying the backing array.
-   * @return true if a carry/overflow occurred, false otherwise.
+   * @return this object for chaining.
    */
-  public abstract boolean mInc();
+  public abstract T mInc();
 
   /**
    * Decrements the value in-place by 1, modifying the backing array.
-   * @return true if an underflow occurred, false otherwise.
+   * @return this object for chaining.
    */
-  public abstract boolean mDec();
+  public abstract T mDec();
 
   /**
    * Adds the specified value to this value in-place, modifying the backing array.
-   * @return true if a carry/overflow occurred, false otherwise.
+   * @return this object for chaining.
    */
-  public abstract boolean mAdd(T other);
+  public abstract T mAdd(T other);
 
   /**
    * Adds the specified value to this value, modulo mod, in-place, modifying the backing array.
-   * @return true if a carry/overflow/underflow occurred, false otherwise.
+   * @return this object for chaining.
    */
-  public abstract boolean mAddMod(T add, T mod);
+  public abstract T mAddMod(T add, T mod);
 
   /**
    * Subtracts the specified value from this value in-place, modifying the backing array.
-   * @return true if a borrow/underflow occurred, false otherwise.
+   * @return this object for chaining.
    */
-  public abstract boolean mSubtract(T other);
+  public abstract T mSubtract(T other);
 
   /**
    * Multiplies this value by the specified value in-place, modifying the backing array.
-   * @return true if a carry/overflow occurred, false otherwise.
+   * @return this object for chaining.
    */
-  public abstract boolean mMultiply(T other);
+  public abstract T mMultiply(T other);
 
   /**
    * Multiplies this value by the specified value, modulo mod, in-place, modifying the backing array.
-   * @return true if a carry/overflow/underflow occurred, false otherwise.
+   * @return this object for chaining.
    */
-  public abstract boolean mMulMod(T mul, T mod);
+  public abstract T mMulMod(T mul, T mod);
 
   /**
    * Raises this value to the specified power in-place, modifying the backing array.
-   * @return true if a carry/overflow occurred, false otherwise.
+   * @return this object for chaining.
    */
-  public abstract boolean mPow(int exp);
+  public abstract T mPow(int exp);
+
+  /**
+   * Takes the square root of this value in-place, modifying the backing array.
+   * @return this object for chaining.
+   */
+  public abstract T mSqrt();
 
   /**
    * Divides this value by the specified value in-place, modifying the backing array.
-   * @return true if an overflow occurred, false otherwise.
+   * @return this object for chaining.
    */
-  public abstract boolean mDivide(T other);
+  public abstract T mDivide(T other);
 
   /**
    * Takes the remainder when this value is divided by the specified value in-place, modifying the backing array.
-   * @return true if an overflow occurred, false otherwise.
+   * @return this object for chaining.
    */
-  public abstract boolean mMod(T other);
+  public abstract T mMod(T other);
 
   /**
    * {@code (this & (1 << bit)) != 0}
