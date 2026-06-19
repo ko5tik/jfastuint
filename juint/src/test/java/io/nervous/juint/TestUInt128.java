@@ -29,7 +29,7 @@ public class TestUInt128 extends Properties<UInt128> {
       UInt256 large = new UInt256(ints);
       assertEquals(new UInt128(large.toBigInteger()), new UInt128(large));
       assertArrayEquals(
-        Arrays.stripLeadingZeroes(ints, UInt256.MAX_WIDTH - UInt128.MAX_WIDTH),
+        java.util.Arrays.copyOfRange(ints, UInt256.MAX_WIDTH - UInt128.MAX_WIDTH, UInt256.MAX_WIDTH),
         new UInt128(large).ints);
     }
   }

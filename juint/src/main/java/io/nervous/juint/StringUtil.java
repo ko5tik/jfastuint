@@ -133,14 +133,15 @@ final class StringUtil {
       tmp = Arrays.divmod(q, divisor);
       q   = tmp[0];
       r   = tmp[1];
-      if(r.length == 0) {
+      final int[] cleanR = Arrays.stripLeadingZeroes(r);
+      if(cleanR.length == 0) {
         groups[group++] = "0";
       } else {
-        final long rl = r.length == 1 ?
-          (r[0] & LONG) : ((r[0] & LONG) << 32) | (r[1] & LONG);
+        final long rl = cleanR.length == 1 ?
+          (cleanR[0] & LONG) : ((cleanR[0] & LONG) << 32) | (cleanR[1] & LONG);
         groups[group++] = Long.toString(rl, radix);
       }
-    } while(0 < q.length);
+    } while(!Arrays.isZero(q));
 
     final int rlen         = RADIX_LENGTH_LONG[radix - 2];
     final StringBuilder sb = new StringBuilder(group * rlen);
