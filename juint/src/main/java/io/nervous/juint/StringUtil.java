@@ -83,7 +83,7 @@ final class StringUtil {
       firstlen = perint;
 
     String group = s.substring(pos, pos += firstlen);
-    if((ints[words - 1] = Integer.parseInt(group, radix)) < 0) {
+    if((ints[0] = Integer.parseInt(group, radix)) < 0) {
       throw new NumberFormatException("Illegal digit");
     }
 
@@ -105,16 +105,16 @@ final class StringUtil {
     final int len   = out.length;
 
     long carry = 0;
-    for(int outi = len - 1; 0 <= outi; outi--) {
+    for(int outi = 0; outi < len; outi++) {
       final long prod = lmul * (out[outi] & LONG) + carry;
       out[outi]       = (int)prod;
       carry           = prod >>> 32;
     }
 
-    long sum     = (out[len - 1] & LONG) + ladd;
-    out[len - 1] = (int)sum;
+    long sum     = (out[0] & LONG) + ladd;
+    out[0] = (int)sum;
     carry        = sum >>> 32;
-    for(int outi = len - 2; carry != 0L && 0 <= outi; outi--) {
+    for(int outi = 1; carry != 0L && outi < len; outi++) {
       sum        = (out[outi] & LONG) + carry;
       out[outi]  = (int)sum;
       carry      = sum >>> 32;
@@ -138,7 +138,7 @@ final class StringUtil {
         groups[group++] = "0";
       } else {
         final long rl = cleanR.length == 1 ?
-          (cleanR[0] & LONG) : ((cleanR[0] & LONG) << 32) | (cleanR[1] & LONG);
+          (cleanR[0] & LONG) : ((cleanR[1] & LONG) << 32) | (cleanR[0] & LONG);
         groups[group++] = Long.toString(rl, radix);
       }
     } while(!Arrays.isZero(q));

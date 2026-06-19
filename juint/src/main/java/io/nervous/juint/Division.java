@@ -3,7 +3,86 @@ package io.nervous.juint;
 final class Division {
   private static long LONG = 0xffffffffL;
 
+  private static int[] reverse(final int[] src) {
+    int[] dst = new int[src.length];
+    for (int i = 0; i < src.length; i++) {
+      dst[i] = src[src.length - 1 - i];
+    }
+    return dst;
+  }
+
+  private static int[] reverse(final int[] src, final int len) {
+    int[] dst = new int[len];
+    for (int i = 0; i < len; i++) {
+      dst[i] = src[len - 1 - i];
+    }
+    return dst;
+  }
+
   static int[][] div(final int[] a, final int b) {
+    int[] revA = reverse(a);
+    int[][] qr = divBE(revA, b);
+    return new int[][]{reverse(qr[0]), reverse(qr[1])};
+  }
+
+  static int[][] div(final int[] a, long b) {
+    int[] revA = reverse(a);
+    int[][] qr = divBE(revA, b);
+    return new int[][]{reverse(qr[0]), reverse(qr[1])};
+  }
+
+  static int[][] div(final int[] a, final int[] b) {
+    int[] revA = reverse(a);
+    int[] revB = reverse(b);
+    int[][] qr = divBE(revA, revB);
+    return new int[][]{reverse(qr[0]), reverse(qr[1])};
+  }
+
+  static void div(final int[] a, final int aLen, final int b, final int[] quo, final int[] remOut) {
+    int[] revA = reverse(a, aLen);
+    int[] revQuo = new int[128];
+    int[] revRem = new int[128];
+    divBE(revA, aLen, b, revQuo, revRem);
+    for (int i = 0; i < aLen; i++) {
+      quo[i] = revQuo[aLen - 1 - i];
+    }
+    remOut[0] = revRem[0];
+  }
+
+  static void div(final int[] a, final int aLen, long b, final int[] quo, final int[] rem) {
+    int[] revA = reverse(a, aLen);
+    int[] revQuo = new int[128];
+    int[] revRem = new int[128];
+    divBE(revA, aLen, b, revQuo, revRem);
+    for (int i = 0; i < aLen - 1; i++) {
+      quo[i] = revQuo[aLen - 2 - i];
+    }
+    rem[0] = revRem[aLen];
+    rem[1] = revRem[aLen - 1];
+  }
+
+  static void div(final int[] a, final int aLen, final int[] b, final int bLen, final int[] quo, final int[] rem, final int[] divScratch) {
+    int[] revA = reverse(a, aLen);
+    int[] revB = reverse(b, bLen);
+    int places = Integer.numberOfLeadingZeros(revB[0]);
+    int remLen = aLen + 1;
+    if (0 < places && places > Integer.numberOfLeadingZeros(revA[0])) {
+      remLen = aLen + 2;
+    }
+    int qints = remLen - bLen;
+    int[] revQuo = new int[128];
+    int[] revRem = new int[128];
+    int[] revDivScratch = new int[128];
+    divBE(revA, aLen, revB, bLen, revQuo, revRem, revDivScratch);
+    for (int i = 0; i < qints; i++) {
+      quo[i] = revQuo[qints - 1 - i];
+    }
+    for (int i = 0; i < bLen; i++) {
+      rem[i] = revRem[remLen - 1 - i];
+    }
+  }
+
+  static int[][] divBE(final int[] a, final int b) {
     final long bl = b & LONG;
 
     if(a.length == 1) {
@@ -40,7 +119,7 @@ final class Division {
     return new int[][]{quo, new int[]{0 < places ? rem % b : rem}};
   }
 
-  static int[][] div(final int[] a, long b) {
+  static int[][] divBE(final int[] a, long b) {
     final int  alen = a.length;
     final int[] quo = new int[alen - 1], rem = new int[alen + 1];
 
@@ -70,7 +149,7 @@ final class Division {
     return new int[][]{quo, rem};
   }
 
-  static int[][] div(final int[] a, final int[] b) {
+  static int[][] divBE(final int[] a, final int[] b) {
     final int places = Integer.numberOfLeadingZeros(b[0]);
     final int[] div, rem;
 
@@ -313,7 +392,7 @@ final class Division {
   }
 
   // Non-allocating division helper: divisor is a single int
-  static void div(final int[] a, final int aLen, final int b, final int[] quo, final int[] remOut) {
+  static void divBE(final int[] a, final int aLen, final int b, final int[] quo, final int[] remOut) {
     final long bl = b & LONG;
 
     if(aLen == 1) {
@@ -353,7 +432,7 @@ final class Division {
   }
 
   // Non-allocating division helper: divisor is a long
-  static void div(final int[] a, final int aLen, long b, final int[] quo, final int[] rem) {
+  static void divBE(final int[] a, final int aLen, long b, final int[] quo, final int[] rem) {
     final int  alen = aLen;
 
     java.util.Arrays.fill(rem, 0, alen + 2, 0);
@@ -384,7 +463,7 @@ final class Division {
   }
 
   // Non-allocating division helper: divisor is an int[]
-  static void div(final int[] a, final int aLen, final int[] b, final int bLen, final int[] quo, final int[] rem, final int[] divScratch) {
+  static void divBE(final int[] a, final int aLen, final int[] b, final int bLen, final int[] quo, final int[] rem, final int[] divScratch) {
     final int places = Integer.numberOfLeadingZeros(b[0]);
     final int[] activeDiv;
     final int remLen;

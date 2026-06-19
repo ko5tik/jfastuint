@@ -46,7 +46,7 @@ final class Arrays {
         }
 
         final int hi = (int) (v >>> 32);
-        return hi == 0 ? new int[]{(int) v} : new int[]{hi, (int) v};
+        return hi == 0 ? new int[]{(int) v} : new int[]{(int) v, hi};
     }
 
     static int compare(final int[] ints, final int[] other) {
@@ -58,8 +58,7 @@ final class Arrays {
             return 1;
         }
 
-        int cmp;
-        for (int i = 0; i < len; i++) {
+        for (int i = len - 1; i >= 0; i--) {
             if (ints[i] != other[i]) {
                 return Integer.compareUnsigned(ints[i], other[i]);
             }
@@ -69,28 +68,23 @@ final class Arrays {
     }
 
     static int compareActive(final int[] a, final int[] b) {
-        int aStart = 0;
-        while (aStart < a.length && a[aStart] == 0) {
-            aStart++;
+        int aLen = a.length;
+        while (aLen > 0 && a[aLen - 1] == 0) {
+            aLen--;
         }
-        int aLen = a.length - aStart;
-
-        int bStart = 0;
-        while (bStart < b.length && b[bStart] == 0) {
-            bStart++;
+        int bLen = b.length;
+        while (bLen > 0 && b[bLen - 1] == 0) {
+            bLen--;
         }
-        int bLen = b.length - bStart;
-
         if (aLen < bLen) {
             return -1;
         }
         if (aLen > bLen) {
             return 1;
         }
-
-        for (int i = 0; i < aLen; i++) {
-            int aVal = a[aStart + i];
-            int bVal = b[bStart + i];
+        for (int i = aLen - 1; i >= 0; i--) {
+            int aVal = a[i];
+            int bVal = b[i];
             if (aVal != bVal) {
                 return Integer.compareUnsigned(aVal, bVal);
             }
@@ -111,11 +105,11 @@ final class Arrays {
     }
 
     static int[] stripLeadingZeroes(final int[] ints, int strip) {
-        final int len = ints.length;
-
-        for (; strip < len && ints[strip] == 0; strip++)
-            ;
-        return strip == 0 ? ints : copyOfRange(ints, strip, len);
+        int end = ints.length;
+        while (end > strip && ints[end - 1] == 0) {
+            end--;
+        }
+        return end == ints.length ? ints : copyOfRange(ints, 0, end);
     }
 
     static int[] stripLeadingZeroes(final int[] ints) {
@@ -135,12 +129,11 @@ final class Arrays {
         int maxWidth = maxValue.length;
         final int[] out = new int[maxWidth];
         int len = ints.length;
-        int diff = maxWidth - len;
-        for (int i = 0; i < diff; i++) {
-            out[i] = -1;
+        for (int i = 0; i < len; i++) {
+            out[i] = ~ints[i];
         }
-        for (int i = diff; i < maxWidth; i++) {
-            out[i] = ~ints[i - diff];
+        for (int i = len; i < maxWidth; i++) {
+            out[i] = -1;
         }
         return out;
     }
@@ -163,14 +156,12 @@ final class Arrays {
             return new int[longer.length];
         }
 
-        final int[] out = copyOf(shorter, shortlen);
-        int longlen = longer.length;
-
-        while (0 < shortlen) {
-            out[--shortlen] &= longer[--longlen];
+        final int[] out = new int[shortlen];
+        for (int i = 0; i < shortlen; i++) {
+            out[i] = shorter[i] & longer[i];
         }
 
-        return out;
+        return stripLeadingZeroes(out);
     }
 
     static int[] or(int[] longer, int[] shorter) {
@@ -182,8 +173,8 @@ final class Arrays {
         int longlen = longer.length, shortlen = shorter.length;
         final int[] out = copyOf(longer, longlen);
 
-        while (0 < shortlen) {
-            out[--longlen] |= shorter[--shortlen];
+        for (int i = 0; i < shortlen; i++) {
+            out[i] |= shorter[i];
         }
 
         return out;
@@ -202,35 +193,38 @@ final class Arrays {
 
         final int[] out = copyOf(longer, longlen);
 
-        while (0 < shortlen) {
-            out[--longlen] ^= shorter[--shortlen];
+        for (int i = 0; i < shortlen; i++) {
+            out[i] ^= shorter[i];
         }
 
-        return out;
+        return stripLeadingZeroes(out);
     }
 
     static int[] setBit(final int[] a, final int bit) {
         final int i = bit >>> 5, alen = a.length;
 
-        if (i <= alen - 1) {
-            final int j = alen - i - 1, v = a[j] | 1 << (bit & 31);
-            if (v == a[j]) {
+        if (i < alen) {
+            final int v = a[i] | 1 << (bit & 31);
+            if (v == a[i]) {
                 return a;
             }
             final int[] out = copyOf(a, alen);
-            out[j] = v;
+            out[i] = v;
             return out;
         }
 
         final int[] out = new int[i + 1];
-        System.arraycopy(a, 0, out, out.length - alen, alen);
+        System.arraycopy(a, 0, out, 0, alen);
 
-        out[0] = 1 << (bit & 31);
+        out[i] = 1 << (bit & 31);
         return out;
     }
 
     static int[] clearBit(final int[] a, final int bit) {
-        final int alen = a.length, i = alen - (bit >>> 5) - 1;
+        final int alen = a.length, i = bit >>> 5;
+        if (i >= alen) {
+            return a;
+        }
         final int v = a[i] & ~(1 << (bit & 31));
 
         if (v == a[i]) {
@@ -247,13 +241,13 @@ final class Arrays {
 
         if (i < alen) {
             final int[] out = copyOf(a, alen);
-            out[alen - i - 1] ^= (1 << (bit & 31));
+            out[i] ^= (1 << (bit & 31));
             return out;
         }
 
         final int[] out = new int[i + 1];
-        System.arraycopy(a, 0, out, out.length - alen, alen);
-        out[0] ^= (1 << (bit & 31));
+        System.arraycopy(a, 0, out, 0, alen);
+        out[i] ^= (1 << (bit & 31));
         return out;
     }
 
@@ -267,16 +261,16 @@ final class Arrays {
         final int alen = a.length;
         final int bitShift = n & 0x1f;
         if (bitShift == 0) {
-            for (int i = 0; i < targetWidth - wordShift; i++) {
-                int aIdx = i + wordShift - (targetWidth - alen);
-                out[i] = (aIdx >= 0 && aIdx < alen) ? a[aIdx] : 0;
+            for (int i = wordShift; i < targetWidth; i++) {
+                int aIdx = i - wordShift;
+                out[i] = (aIdx < alen) ? a[aIdx] : 0;
             }
         } else {
             final int invShift = 32 - bitShift;
-            for (int i = 0; i < targetWidth - wordShift; i++) {
-                int aIdx1 = i + wordShift - (targetWidth - alen);
-                int aIdx2 = i + wordShift + 1 - (targetWidth - alen);
-                int val1 = (aIdx1 >= 0 && aIdx1 < alen) ? a[aIdx1] : 0;
+            for (int i = wordShift; i < targetWidth; i++) {
+                int aIdx1 = i - wordShift;
+                int aIdx2 = i - wordShift - 1;
+                int val1 = (aIdx1 < alen) ? a[aIdx1] : 0;
                 int val2 = (aIdx2 >= 0 && aIdx2 < alen) ? a[aIdx2] : 0;
                 out[i] = (val1 << bitShift) | (val2 >>> invShift);
             }
@@ -288,24 +282,24 @@ final class Arrays {
         int targetWidth = maxWidth == -1 ? a.length : maxWidth;
         final int[] out = new int[targetWidth];
         final int wordShift = n >>> 5;
-        if (wordShift >= targetWidth) {
+        if (wordShift >= a.length) {
             return out;
         }
         final int alen = a.length;
         final int bitShift = n & 0x1f;
         if (bitShift == 0) {
-            for (int i = wordShift; i < targetWidth; i++) {
-                int aIdx = i - wordShift - (targetWidth - alen);
-                out[i] = (aIdx >= 0 && aIdx < alen) ? a[aIdx] : 0;
+            for (int i = 0; i < targetWidth; i++) {
+                int aIdx = i + wordShift;
+                out[i] = (aIdx < alen) ? a[aIdx] : 0;
             }
         } else {
             final int invShift = 32 - bitShift;
-            for (int i = wordShift; i < targetWidth; i++) {
-                int aIdx1 = i - wordShift - 1 - (targetWidth - alen);
-                int aIdx2 = i - wordShift - (targetWidth - alen);
-                int val1 = (aIdx1 >= 0 && aIdx1 < alen) ? a[aIdx1] : 0;
-                int val2 = (aIdx2 >= 0 && aIdx2 < alen) ? a[aIdx2] : 0;
-                out[i] = (val1 << invShift) | (val2 >>> bitShift);
+            for (int i = 0; i < targetWidth; i++) {
+                int aIdx1 = i + wordShift;
+                int aIdx2 = i + wordShift + 1;
+                int val1 = (aIdx1 < alen) ? a[aIdx1] : 0;
+                int val2 = (aIdx2 < alen) ? a[aIdx2] : 0;
+                out[i] = (val1 >>> bitShift) | (val2 << invShift);
             }
         }
         return out;
@@ -323,12 +317,12 @@ final class Arrays {
             b = mutate ? a : copyOf(a, len);
         } else {
             b = new int[targetWidth];
-            System.arraycopy(a, 0, b, targetWidth - len, len);
+            System.arraycopy(a, 0, b, 0, len);
         }
 
-        int last = targetWidth - 1;
-        while (0 <= last) {
-            if (++(b[last--]) != 0) {
+        int last = 0;
+        while (last < targetWidth) {
+            if (++(b[last++]) != 0) {
                 return b;
             }
         }
@@ -338,9 +332,9 @@ final class Arrays {
     static int[] dec(final int[] a) {
         final int len = a.length;
         final int[] b = copyOf(a, len);
-        int last = len - 1;
-        while (last >= 0) {
-            if (--(b[last--]) != -1) {
+        int last = 0;
+        while (last < len) {
+            if (--(b[last++]) != -1) {
                 break;
             }
         }
@@ -356,28 +350,21 @@ final class Arrays {
         int targetWidth = maxWidth == -1 ? longer.length : maxWidth;
         final int[] out = new int[targetWidth];
         
-        int longi = longer.length;
-        int shorti = shorter.length;
-        int outi = targetWidth;
+        int llen = longer.length;
+        int slen = shorter.length;
         long sum = 0;
 
-        while (0 < outi) {
-            long aVal = 0;
-            if (0 < longi) {
-                aVal = longer[--longi] & LONG;
-            }
-            long bVal = 0;
-            if (0 < shorti) {
-                bVal = shorter[--shorti] & LONG;
-            }
+        for (int i = 0; i < targetWidth; i++) {
+            long aVal = i < llen ? (longer[i] & LONG) : 0L;
+            long bVal = i < slen ? (shorter[i] & LONG) : 0L;
             sum = aVal + bVal + (sum >>> 32);
-            out[--outi] = (int) sum;
+            out[i] = (int) sum;
         }
 
         if (maxWidth == -1 && (sum >>> 32) != 0) {
             int[] grown = new int[targetWidth + 1];
-            grown[0] = 1;
-            System.arraycopy(out, 0, grown, 1, targetWidth);
+            System.arraycopy(out, 0, grown, 0, targetWidth);
+            grown[targetWidth] = 1;
             return grown;
         }
 
@@ -392,17 +379,17 @@ final class Arrays {
     }
 
     static int[] sub(final int[] a, final int[] b) {
-        int longi = a.length, shorti = b.length;
-        final int[] out = copyOf(a, longi);
+        int alen = a.length, blen = b.length;
+        final int[] out = copyOf(a, alen);
         long diff = 0;
 
-        while (0 < shorti) {
-            diff = (out[--longi] & LONG) - (b[--shorti] & LONG) + (diff >> 32);
-            out[longi] = (int) diff;
+        for (int i = 0; i < blen; i++) {
+            diff = (out[i] & LONG) - (b[i] & LONG) + (diff >> 32);
+            out[i] = (int) diff;
         }
 
         if (diff >> 32 != 0) {
-            while (0 < longi && --(out[--longi]) == -1) {
+            for (int i = blen; i < alen && --(out[i]) == -1; i++) {
                 ;
             }
         }
@@ -427,7 +414,7 @@ final class Arrays {
         }
         int[] padded = new int[c.length];
         int len = Math.min(res.length, c.length);
-        System.arraycopy(res, res.length - len, padded, c.length - len, len);
+        System.arraycopy(res, 0, padded, 0, len);
         return padded;
     }
 
@@ -445,112 +432,108 @@ final class Arrays {
         }
         int[] padded = new int[c.length];
         int len = Math.min(res.length, c.length);
-        System.arraycopy(res, res.length - len, padded, c.length - len, len);
+        System.arraycopy(res, 0, padded, 0, len);
         return padded;
     }
 
     static int[] multiply(int[] a, int[] b, final int maxWidth) {
-        if (a.length < b.length) {
-            int[] tmp = a;
-            a = b;
-            b = tmp;
-        }
-        final int alen = a.length, blen = b.length;
-
-        if (blen == 1) {
-            return mul(a, alen, b[0], maxWidth);
-        }
-        if (blen == 2) {
-            return mul(a, alen, b[0], b[1], maxWidth);
-        }
-
-        final int outlen = alen + blen;
-        return mul(a, alen, b, blen, maxWidth, Math.max(0, outlen - maxWidth));
+        return multiply(a, b, maxWidth, new boolean[1]);
     }
 
-    static int[] mul(int[] a, final int alen, int b, int maxWidth) {
-        if (Integer.bitCount(b) == 1) {
-            return lshift(a, Integer.numberOfTrailingZeros(b), maxWidth);
+    static int[] multiply(int[] a, int[] b, final int maxWidth, boolean[] overflowHolder) {
+        Scratchpad pad = SCRATCH.get();
+        int[] tempA = pad.a;
+        int[] tempB = pad.b;
+
+        java.util.Arrays.fill(tempA, 0, maxWidth, 0);
+        java.util.Arrays.fill(tempB, 0, maxWidth, 0);
+
+        int copyLenA = Math.min(a.length, maxWidth);
+        System.arraycopy(a, 0, tempA, 0, copyLenA);
+
+        int copyLenB = Math.min(b.length, maxWidth);
+        System.arraycopy(b, 0, tempB, 0, copyLenB);
+
+        boolean overflow = false;
+        if (a.length > maxWidth) {
+            for (int i = maxWidth; i < a.length; i++) {
+                if (a[i] != 0) {
+                    overflow = true;
+                    break;
+                }
+            }
+        }
+        if (b.length > maxWidth) {
+            for (int i = maxWidth; i < b.length; i++) {
+                if (b[i] != 0) {
+                    overflow = true;
+                    break;
+                }
+            }
         }
 
-        final int[] out = new int[maxWidth];
-        long carry = 0;
-        final long bl = b & LONG;
+        int[] res = new int[maxWidth];
 
-        int ai = alen - 1;
-        int outi = maxWidth - 1;
-        while (0 <= ai && 0 <= outi) {
-            final long prod = (a[ai--] & LONG) * bl + carry;
-            out[outi--] = (int) prod;
-            carry = prod >>> 32;
-        }
-        if (0 <= outi) {
-            out[outi] = (int) carry;
-        }
-
-        return out;
-    }
-
-    static int[] mul(
-            final int[] a, final int alen, final int hi, final int lo, final int maxWidth) {
-
-        final int[] out = new int[maxWidth];
-        final long lhi = hi & LONG;
-        final long llo = lo & LONG;
-
-        long carry = 0;
-        int ai = alen - 1;
-        int outi = maxWidth - 1;
-        while (0 <= ai && 0 <= outi) {
-            long prod = (a[ai--] & LONG) * llo + carry;
-            out[outi--] = (int) prod;
-            carry = prod >>> 32;
-        }
-        if (0 <= outi) {
-            out[outi] = (int) carry;
-        }
-
-        carry = 0;
-        ai = alen - 1;
-        outi = maxWidth - 2;
-        while (0 <= ai && 0 <= outi) {
-            long prod = (a[ai--] & LONG) * lhi + (out[outi] & LONG) + carry;
-            out[outi--] = (int) prod;
-            carry = prod >>> 32;
-        }
-        if (0 <= outi) {
-            out[outi] = (int) ((out[outi] & LONG) + carry);
+        for (int i = 0; i < maxWidth; i++) {
+            long aVal = tempA[i] & LONG;
+            if (aVal == 0) {
+                continue;
+            }
+            long carry = 0;
+            for (int j = 0; j < maxWidth; j++) {
+                int targetIdx = i + j;
+                if (targetIdx < maxWidth) {
+                    long prod = aVal * (tempB[j] & LONG) + (res[targetIdx] & LONG) + carry;
+                    res[targetIdx] = (int) prod;
+                    carry = prod >>> 32;
+                } else {
+                    if (carry != 0) {
+                        overflow = true;
+                        carry = 0;
+                    }
+                    if (tempB[j] != 0) {
+                        overflow = true;
+                    }
+                }
+            }
+            int carryIdx = i + maxWidth;
+            while (carry != 0) {
+                if (carryIdx < maxWidth) {
+                    long sum = (res[carryIdx] & LONG) + carry;
+                    res[carryIdx] = (int) sum;
+                    carry = sum >>> 32;
+                    carryIdx++;
+                } else {
+                    overflow = true;
+                    break;
+                }
+            }
         }
 
-        return out;
+        overflowHolder[0] = overflow;
+        return res;
     }
 
     static int[] mul(
             final int[] a, final int alen, final int[] b, final int blen) {
 
         final int outlen = alen + blen;
-        final int astart = alen - 1, bstart = blen - 1;
         final int[] out = new int[outlen];
-        long carry = 0;
 
-        for (int bi = bstart, outi = outlen - 1; 0 <= bi; bi--, outi--) {
-            final long prod = (b[bi] & LONG) * (a[astart] & LONG) + carry;
-            out[outi] = (int) prod;
-            carry = prod >>> 32;
-        }
-        out[astart] = (int) carry;
-
-        for (int ai = astart - 1; 0 <= ai; ai--) {
-            carry = 0;
-            for (int bi = bstart, outi = bstart + ai + 1; 0 <= bi; bi--, outi--) {
-                final long prod = (b[bi] & LONG) * (a[ai] & LONG) + (out[outi] & LONG) + carry;
-                out[outi] = (int) prod;
+        for (int i = 0; i < alen; i++) {
+            long aVal = a[i] & LONG;
+            if (aVal == 0) continue;
+            long carry = 0;
+            for (int j = 0; j < blen; j++) {
+                int targetIdx = i + j;
+                long prod = aVal * (b[j] & LONG) + (out[targetIdx] & LONG) + carry;
+                out[targetIdx] = (int) prod;
                 carry = prod >>> 32;
             }
-            out[ai] = (int) carry;
+            out[i + blen] = (int) carry;
         }
 
-        return carry == 0L ? stripLeadingZeroes(out, 1) : out;
+        return stripLeadingZeroes(out, 1);
     }
 
     static void mul(
@@ -558,24 +541,18 @@ final class Arrays {
 
         final int outlen = alen + blen;
         java.util.Arrays.fill(out, 0, outlen, 0);
-        final int astart = alen - 1, bstart = blen - 1;
-        long carry = 0;
 
-        for (int bi = bstart, outi = outlen - 1; 0 <= bi; bi--, outi--) {
-            final long prod = (b[bi] & LONG) * (a[astart] & LONG) + carry;
-            out[outi] = (int) prod;
-            carry = prod >>> 32;
-        }
-        out[astart] = (int) carry;
-
-        for (int ai = astart - 1; 0 <= ai; ai--) {
-            carry = 0;
-            for (int bi = bstart, outi = bstart + ai + 1; 0 <= bi; bi--, outi--) {
-                final long prod = (b[bi] & LONG) * (a[ai] & LONG) + (out[outi] & LONG) + carry;
-                out[outi] = (int) prod;
+        for (int i = 0; i < alen; i++) {
+            long aVal = a[i] & LONG;
+            if (aVal == 0) continue;
+            long carry = 0;
+            for (int j = 0; j < blen; j++) {
+                int targetIdx = i + j;
+                long prod = aVal * (b[j] & LONG) + (out[targetIdx] & LONG) + carry;
+                out[targetIdx] = (int) prod;
                 carry = prod >>> 32;
             }
-            out[ai] = (int) carry;
+            out[i + blen] = (int) carry;
         }
     }
 
@@ -592,20 +569,20 @@ final class Arrays {
             return;
         }
 
-        int modStart = 0;
-        while (modStart < mod.length && mod[modStart] == 0) {
-            modStart++;
+        int modEnd = mod.length - 1;
+        while (modEnd >= 0 && mod[modEnd] == 0) {
+            modEnd--;
         }
-        int modActiveLen = mod.length - modStart;
+        int modActiveLen = modEnd + 1;
         if (modActiveLen == 0) {
             throw new ArithmeticException("modulo by zero");
         }
 
-        int start = 0;
-        while (start < val.length && val[start] == 0) {
-            start++;
+        int valEnd = val.length - 1;
+        while (valEnd >= 0 && val[valEnd] == 0) {
+            valEnd--;
         }
-        int activeLen = val.length - start;
+        int activeLen = valEnd + 1;
         if (activeLen == 0) {
             java.util.Arrays.fill(val, 0);
             return;
@@ -613,10 +590,10 @@ final class Arrays {
 
         Scratchpad pad = SCRATCH.get();
         java.util.Arrays.fill(pad.a, 0);
-        System.arraycopy(val, start, pad.a, 0, activeLen);
+        System.arraycopy(val, 0, pad.a, 0, activeLen);
 
         java.util.Arrays.fill(pad.d, 0);
-        System.arraycopy(mod, modStart, pad.d, 0, modActiveLen);
+        System.arraycopy(mod, 0, pad.d, 0, modActiveLen);
 
         java.util.Arrays.fill(pad.quo, 0);
         java.util.Arrays.fill(pad.rem, 0);
@@ -625,134 +602,56 @@ final class Arrays {
         if (modActiveLen == 1) {
             Division.div(pad.a, activeLen, pad.d[0], pad.quo, pad.rem);
             java.util.Arrays.fill(val, 0);
-            val[val.length - 1] = pad.rem[0];
+            val[0] = pad.rem[0];
         } else if (modActiveLen == 2) {
-            final long divisor = ((pad.d[0] & LONG) << 32) | (pad.d[1] & LONG);
+            final long divisor = ((pad.d[1] & LONG) << 32) | (pad.d[0] & LONG);
             Division.div(pad.a, activeLen, divisor, pad.quo, pad.rem);
             java.util.Arrays.fill(val, 0);
-            int srcLen = activeLen + 1;
-            int copyLimit = Math.min(srcLen, val.length);
-            System.arraycopy(pad.rem, srcLen - copyLimit, val, val.length - copyLimit, copyLimit);
+            int copyLimit = Math.min(2, val.length);
+            System.arraycopy(pad.rem, 0, val, 0, copyLimit);
         } else {
             Division.div(pad.a, activeLen, pad.d, modActiveLen, pad.quo, pad.rem, pad.div);
-            int places = Integer.numberOfLeadingZeros(pad.d[0]);
-            int remLen = (0 < places && places > Integer.numberOfLeadingZeros(pad.a[0])) ? activeLen + 2 : activeLen + 1;
-            int copyLimit = Math.min(remLen, val.length);
             java.util.Arrays.fill(val, 0);
-            System.arraycopy(pad.rem, remLen - copyLimit, val, val.length - copyLimit, copyLimit);
+            int copyLimit = Math.min(modActiveLen, val.length);
+            System.arraycopy(pad.rem, 0, val, 0, copyLimit);
         }
-    }
-
-    static int[] mul(
-            final int[] a, final int alen, final int[] b, final int blen,
-            final int outlen, final int trunc) {
-
-        final int astart = alen - 1, bstart = blen - 1;
-        final int[] out = new int[outlen];
-        long carry = 0;
-
-        for (int bi = bstart, outi = outlen - 1; 0 <= bi; bi--, outi--) {
-            final long prod = (b[bi] & LONG) * (a[astart] & LONG) + carry;
-            out[outi] = (int) prod;
-            carry = prod >>> 32;
-        }
-        if (trunc <= astart) {
-            out[astart - trunc] = (int) carry;
-        }
-
-        int outend = outlen - 2;
-        for (int ai = astart - 1; 0 <= ai; ai--) {
-            carry = 0;
-            for (int bi = bstart, outi = outend--; 0 <= bi && 0 <= outi; bi--, outi--) {
-                final long prod = (b[bi] & LONG) * (a[ai] & LONG) + (out[outi] & LONG) + carry;
-                out[outi] = (int) prod;
-                carry = prod >>> 32;
-            }
-            if (trunc <= ai) {
-                out[ai - trunc] = (int) carry;
-            }
-        }
-        return out;
     }
 
     static int bitLength(int a[]) {
-        int firstNonZero = 0;
-        while (firstNonZero < a.length && a[firstNonZero] == 0) {
-            firstNonZero++;
+        int firstNonZero = a.length - 1;
+        while (firstNonZero >= 0 && a[firstNonZero] == 0) {
+            firstNonZero--;
         }
-        if (firstNonZero == a.length) return 0;
-        int activeLen = a.length - firstNonZero;
-        return ((activeLen - 1) * 32) + (32 - Integer.numberOfLeadingZeros(a[firstNonZero]));
+        if (firstNonZero < 0) return 0;
+        return (firstNonZero * 32) + (32 - Integer.numberOfLeadingZeros(a[firstNonZero]));
+    }
+
+    static int[] square(final int[] a, final int maxWidth, boolean[] overflowHolder) {
+        return multiply(a, a, maxWidth, overflowHolder);
     }
 
     static int[] square(final int[] a, final int maxWidth) {
-        final int alen = a.length, start;
-
-        int outlen = alen << 1;
-        if (maxWidth < outlen) {
-            start = (outlen - maxWidth) >>> 1;
-            outlen = maxWidth;
-        } else {
-            start = 0;
-        }
-
-        final int[] out = new int[outlen];
-
-        int last = 0;
-        for (int ai = start, i = 0; ai < alen; ai++) {
-            final long wl = (a[ai] & LONG);
-            final long prod = wl * wl;
-            out[i++] = (last << 31) | (int) (prod >>> 33);
-            out[i++] = (int) (prod >>> 1);
-            last = (int) prod;
-        }
-
-        for (int ai = alen, pos = 1; start < ai && pos < outlen; ai--, pos += 2) {
-            long carry = 0;
-            int outi = outlen - pos - 1;
-            final long v = a[ai - 1] & LONG;
-
-            for (int aj = ai - 2; 0 <= aj && 0 <= outi; aj--) {
-                long prod = (a[aj] & LONG) * v + (out[outi] & LONG) + carry;
-                out[outi--] = (int) prod;
-                carry = prod >>> 32;
-            }
-
-            if (0 <= outi) {
-                carry += (out[outi] & LONG);
-                out[outi] = (int) carry;
-                if ((carry >> 32) != 0) {
-                    for (int tmp = ai - 1; 0 <= tmp && 0 <= --outi && ++(out[outi]) == 0; tmp--) {
-                        ;
-                    }
-                }
-            }
-        }
-
-        Division.lshunt(out, 1);
-        out[outlen - 1] |= (a[alen - 1] & 1);
-        return out;
+        return multiply(a, a, maxWidth);
     }
 
     static int[] pow(int[] a, final int lo, int exp, final int maxWidth) {
-        int[] res = powInternal(a, lo, exp, maxWidth);
-        if (res.length == maxWidth) {
-            return res;
-        }
-        int[] padded = new int[maxWidth];
-        int len = Math.min(res.length, maxWidth);
-        System.arraycopy(res, res.length - len, padded, maxWidth - len, len);
-        return padded;
+        return pow(a, lo, exp, maxWidth, new boolean[1]);
     }
 
-    private static int[] powInternal(int[] a, final int lo, int exp, final int maxWidth) {
+    static int[] pow(int[] a, final int lo, int exp, final int maxWidth, boolean[] overflowHolder) {
+        int[] res = powInternal(a, lo, exp, maxWidth, overflowHolder);
+        return UInt.padToWidth(res, maxWidth);
+    }
+
+    private static int[] powInternal(int[] a, final int lo, int exp, final int maxWidth, boolean[] overflowHolder) {
         if (exp == 2) {
-            return square(a, maxWidth);
+            return square(a, maxWidth, overflowHolder);
         }
 
         long shift = (long) lo * exp;
         if (Integer.MAX_VALUE < shift) {
-            throw new ArithmeticException("Overflow");
+            overflowHolder[0] = true;
+            return new int[maxWidth];
         }
 
         if (0 < lo) {
@@ -761,6 +660,8 @@ final class Arrays {
 
         final int bits = bitLength(a);
         if (bits == 1) {
+            boolean overflow = (lo * exp >= maxWidth * 32);
+            overflowHolder[0] = overflow;
             return 0 < lo ? lshift(ONE, lo * exp, maxWidth) : ONE;
         }
 
@@ -777,24 +678,47 @@ final class Arrays {
             }
 
             if (0 < lo) {
+                int outBits = 64 - Long.numberOfLeadingZeros(out);
+                boolean overflow = (shift >= maxWidth * 32) || (outBits + shift > maxWidth * 32);
+                overflowHolder[0] = overflow;
                 return ((shift + scale) < 63 ?
                         valueOf(out << shift) :
                         lshift(valueOf(out), (int) shift, maxWidth));
             }
+            int outBits = 64 - Long.numberOfLeadingZeros(out);
+            boolean overflow = (outBits > maxWidth * 32);
+            overflowHolder[0] = overflow;
             return valueOf(out);
         }
 
         final int lplaces = lo * exp;
         int[] out = ONE;
+        boolean overflow = false;
+        boolean[] stepOverflow = new boolean[1];
 
         while (exp != 0) {
-            if ((exp & 1) == 1)
-                out = multiply(out, a, maxWidth);
-            if ((exp >>>= 1) != 0)
-                a = square(a, maxWidth);
+            if ((exp & 1) == 1) {
+                out = multiply(out, a, maxWidth, stepOverflow);
+                if (stepOverflow[0]) {
+                    overflow = true;
+                }
+            }
+            if ((exp >>>= 1) != 0) {
+                a = square(a, maxWidth, stepOverflow);
+                if (stepOverflow[0]) {
+                    overflow = true;
+                }
+            }
         }
 
-        return 0 < lplaces ? lshift(out, lplaces, maxWidth) : out;
+        if (0 < lplaces) {
+            if (!isZero(out) && (lplaces >= maxWidth * 32 || bitLength(out) + lplaces > maxWidth * 32)) {
+                overflow = true;
+            }
+            out = lshift(out, lplaces, maxWidth);
+        }
+        overflowHolder[0] = overflow;
+        return out;
     }
 
     static int[] divide(final int[] a, final int[] b) {
@@ -807,7 +731,7 @@ final class Arrays {
                 q = Division.div(cleanA, cleanB[0])[0];
                 break;
             case 2:
-                final long divisor = ((cleanB[0] & LONG) << 32) | (cleanB[1] & LONG);
+                final long divisor = ((cleanB[1] & LONG) << 32) | (cleanB[0] & LONG);
                 q = Division.div(cleanA, divisor)[0];
                 break;
             default:
@@ -819,7 +743,7 @@ final class Arrays {
         }
         int[] padded = new int[a.length];
         int len = Math.min(q.length, a.length);
-        System.arraycopy(q, q.length - len, padded, a.length - len, len);
+        System.arraycopy(q, 0, padded, 0, len);
         return padded;
     }
 
@@ -833,7 +757,7 @@ final class Arrays {
                 r = Division.div(cleanA, cleanB[0])[1];
                 break;
             case 2:
-                final long divisor = ((cleanB[0] & LONG) << 32) | (cleanB[1] & LONG);
+                final long divisor = ((cleanB[1] & LONG) << 32) | (cleanB[0] & LONG);
                 r = Division.div(cleanA, divisor)[1];
                 break;
             default:
@@ -845,7 +769,7 @@ final class Arrays {
         }
         int[] padded = new int[a.length];
         int len = Math.min(r.length, a.length);
-        System.arraycopy(r, r.length - len, padded, a.length - len, len);
+        System.arraycopy(r, 0, padded, 0, len);
         return padded;
     }
 
@@ -855,11 +779,11 @@ final class Arrays {
 
         int[] paddedQ = new int[a.length];
         int lenQ = Math.min(qr[0].length, a.length);
-        System.arraycopy(qr[0], qr[0].length - lenQ, paddedQ, a.length - lenQ, lenQ);
+        System.arraycopy(qr[0], 0, paddedQ, 0, lenQ);
 
         int[] paddedR = new int[a.length];
         int lenR = Math.min(qr[1].length, a.length);
-        System.arraycopy(qr[1], qr[1].length - lenR, paddedR, a.length - lenR, lenR);
+        System.arraycopy(qr[1], 0, paddedR, 0, lenR);
 
         return new int[][]{paddedQ, paddedR};
     }
@@ -874,7 +798,7 @@ final class Arrays {
                 qr = Division.div(cleanA, cleanB[0]);
                 break;
             case 2:
-                final long divisor = ((cleanB[0] & LONG) << 32) | (cleanB[1] & LONG);
+                final long divisor = ((cleanB[1] & LONG) << 32) | (cleanB[0] & LONG);
                 qr = Division.div(cleanA, divisor);
                 break;
             default:
@@ -883,11 +807,11 @@ final class Arrays {
 
         int[] paddedQ = new int[a.length];
         int lenQ = Math.min(qr[0].length, a.length);
-        System.arraycopy(qr[0], qr[0].length - lenQ, paddedQ, a.length - lenQ, lenQ);
+        System.arraycopy(qr[0], 0, paddedQ, 0, lenQ);
 
         int[] paddedR = new int[a.length];
         int lenR = Math.min(qr[1].length, a.length);
-        System.arraycopy(qr[1], qr[1].length - lenR, paddedR, a.length - lenR, lenR);
+        System.arraycopy(qr[1], 0, paddedR, 0, lenR);
 
         return new int[][]{paddedQ, paddedR};
     }
@@ -897,11 +821,11 @@ final class Arrays {
     static int[] from(BigInteger b, final int maxWidth) {
         int n = Math.min((b.bitLength() >>> 5) + 1, maxWidth);
         final int[] ints = new int[n];
-        while (0 < n) {
-            ints[--n] = b.and(BIG_INT).intValue();
+        for (int i = 0; i < n; i++) {
+            ints[i] = b.and(BIG_INT).intValue();
             b = b.shiftRight(32);
         }
-        return (0 < ints.length && ints[0] == 0) ? stripLeadingZeroes(ints) : ints;
+        return (0 < ints.length && ints[ints.length - 1] == 0) ? stripLeadingZeroes(ints) : ints;
     }
 
     static int[] from(final byte[] bytes, final int[] maxValue) {
@@ -918,7 +842,7 @@ final class Arrays {
         final int ints = Math.min(maxValue.length, ((len - skip) + 3) >>> 2);
         final int[] out = new int[ints];
         int b = len - 1;
-        for (int i = ints - 1; 0 <= i; i--) {
+        for (int i = 0; i < ints; i++) {
             out[i] = bytes[b--] & 0xff;
             int copy = Math.min(3, b - skip + 1);
             for (int j = 8; j <= (copy << 3); j += 8)
@@ -935,7 +859,7 @@ final class Arrays {
 
     static BigInteger toBigInteger(final int[] ints) {
         BigInteger out = BigInteger.ZERO;
-        for (int i = 0; i < ints.length; i++) {
+        for (int i = ints.length - 1; i >= 0; i--) {
             out = out.shiftLeft(32).or(BigInteger.valueOf(ints[i] & LONG));
         }
         return out;
@@ -959,9 +883,7 @@ final class Arrays {
         int len = ints.length;
         int otherLen = other.length;
         for (int i = 0; i < len; i++) {
-            int otherIdx = otherLen - (len - i);
-            int otherVal = otherIdx >= 0 ? other[otherIdx] : 0;
-            ints[i] &= otherVal;
+            ints[i] &= (i < otherLen ? other[i] : 0);
         }
         return false;
     }
@@ -970,9 +892,7 @@ final class Arrays {
         int len = ints.length;
         int otherLen = other.length;
         for (int i = 0; i < len; i++) {
-            int otherIdx = otherLen - (len - i);
-            int otherVal = otherIdx >= 0 ? other[otherIdx] : 0;
-            ints[i] |= otherVal;
+            ints[i] |= (i < otherLen ? other[i] : 0);
         }
         return false;
     }
@@ -981,9 +901,7 @@ final class Arrays {
         int len = ints.length;
         int otherLen = other.length;
         for (int i = 0; i < len; i++) {
-            int otherIdx = otherLen - (len - i);
-            int otherVal = otherIdx >= 0 ? other[otherIdx] : 0;
-            ints[i] ^= otherVal;
+            ints[i] ^= (i < otherLen ? other[i] : 0);
         }
         return false;
     }
@@ -991,24 +909,21 @@ final class Arrays {
     static boolean mSetBit(final int[] ints, final int bit) {
         int len = ints.length;
         if (bit < 0 || bit >= len * 32) return true;
-        int word = len - 1 - (bit >>> 5);
-        ints[word] |= (1 << (bit & 31));
+        ints[bit >>> 5] |= (1 << (bit & 31));
         return false;
     }
 
     static boolean mClearBit(final int[] ints, final int bit) {
         int len = ints.length;
         if (bit < 0 || bit >= len * 32) return true;
-        int word = len - 1 - (bit >>> 5);
-        ints[word] &= ~(1 << (bit & 31));
+        ints[bit >>> 5] &= ~(1 << (bit & 31));
         return false;
     }
 
     static boolean mFlipBit(final int[] ints, final int bit) {
         int len = ints.length;
         if (bit < 0 || bit >= len * 32) return true;
-        int word = len - 1 - (bit >>> 5);
-        ints[word] ^= (1 << (bit & 31));
+        ints[bit >>> 5] ^= (1 << (bit & 31));
         return false;
     }
 
@@ -1029,26 +944,27 @@ final class Arrays {
         int bits = places & 31;
         boolean overflow = false;
         if (words > 0) {
-            for (int i = 0; i < words; i++) {
+            for (int i = len - words; i < len; i++) {
                 if (ints[i] != 0) {
                     overflow = true;
                 }
             }
         }
-        if (bits > 0 && words < len && (ints[words] >>> (32 - bits)) != 0) {
+        if (bits > 0 && words < len && (ints[len - 1 - words] >>> (32 - bits)) != 0) {
             overflow = true;
         }
         if (bits == 0) {
-            for (int i = 0; i < len - words; i++) {
-                ints[i] = ints[i + words];
+            for (int i = len - 1; i >= words; i--) {
+                ints[i] = ints[i - words];
             }
         } else {
-            for (int i = 0; i < len - words - 1; i++) {
-                ints[i] = (ints[i + words] << bits) | (ints[i + words + 1] >>> (32 - bits));
+            final int invShift = 32 - bits;
+            for (int i = len - 1; i > words; i--) {
+                ints[i] = (ints[i - words] << bits) | (ints[i - words - 1] >>> invShift);
             }
-            ints[len - words - 1] = ints[len - 1] << bits;
+            ints[words] = ints[0] << bits;
         }
-        for (int i = len - words; i < len; i++) {
+        for (int i = 0; i < words; i++) {
             ints[i] = 0;
         }
         return overflow;
@@ -1071,26 +987,27 @@ final class Arrays {
         int bits = places & 31;
         boolean overflow = false;
         if (words > 0) {
-            for (int i = len - words; i < len; i++) {
+            for (int i = 0; i < words; i++) {
                 if (ints[i] != 0) {
                     overflow = true;
                 }
             }
         }
-        if (bits > 0 && words < len && (ints[len - 1 - words] & ((1 << bits) - 1)) != 0) {
+        if (bits > 0 && words < len && (ints[words] & ((1 << bits) - 1)) != 0) {
             overflow = true;
         }
         if (bits == 0) {
-            for (int i = len - 1; i >= words; i--) {
-                ints[i] = ints[i - words];
+            for (int i = 0; i < len - words; i++) {
+                ints[i] = ints[i + words];
             }
         } else {
-            for (int i = len - 1; i > words; i--) {
-                ints[i] = (ints[i - words] >>> bits) | (ints[i - words - 1] << (32 - bits));
+            final int invShift = 32 - bits;
+            for (int i = 0; i < len - words - 1; i++) {
+                ints[i] = (ints[i + words] >>> bits) | (ints[i + words + 1] << invShift);
             }
-            ints[words] = ints[0] >>> bits;
+            ints[len - 1 - words] = ints[len - 1] >>> bits;
         }
-        for (int i = 0; i < words; i++) {
+        for (int i = len - words; i < len; i++) {
             ints[i] = 0;
         }
         return overflow;
@@ -1098,7 +1015,7 @@ final class Arrays {
 
     static boolean mInc(final int[] ints) {
         long carry = 1;
-        for (int i = ints.length - 1; i >= 0 && carry != 0; i--) {
+        for (int i = 0; i < ints.length && carry != 0; i++) {
             long sum = (ints[i] & LONG) + carry;
             ints[i] = (int) sum;
             carry = sum >>> 32;
@@ -1108,7 +1025,7 @@ final class Arrays {
 
     static boolean mDec(final int[] ints) {
         long borrow = 1;
-        for (int i = ints.length - 1; i >= 0 && borrow != 0; i--) {
+        for (int i = 0; i < ints.length && borrow != 0; i++) {
             long diff = (ints[i] & LONG) - borrow;
             ints[i] = (int) diff;
             borrow = (diff >> 32) != 0 ? 1 : 0;
@@ -1120,17 +1037,16 @@ final class Arrays {
         long carry = 0;
         int len = ints.length;
         int otherLen = other.length;
-        for (int i = len - 1; i >= 0; i--) {
+        for (int i = 0; i < len; i++) {
             long aVal = ints[i] & LONG;
-            int otherIdx = otherLen - (len - i);
-            long bVal = otherIdx >= 0 ? (other[otherIdx] & LONG) : 0L;
+            long bVal = i < otherLen ? (other[i] & LONG) : 0L;
             long sum = aVal + bVal + carry;
             ints[i] = (int) sum;
             carry = sum >>> 32;
         }
         boolean overflow = carry != 0;
         if (!overflow && otherLen > len) {
-            for (int i = 0; i < otherLen - len; i++) {
+            for (int i = len; i < otherLen; i++) {
                 if (other[i] != 0) {
                     overflow = true;
                     break;
@@ -1144,17 +1060,16 @@ final class Arrays {
         long borrow = 0;
         int len = ints.length;
         int otherLen = other.length;
-        for (int i = len - 1; i >= 0; i--) {
+        for (int i = 0; i < len; i++) {
             long aVal = ints[i] & LONG;
-            int otherIdx = otherLen - (len - i);
-            long bVal = otherIdx >= 0 ? (other[otherIdx] & LONG) : 0L;
+            long bVal = i < otherLen ? (other[i] & LONG) : 0L;
             long diff = aVal - bVal - borrow;
             ints[i] = (int) diff;
             borrow = (diff >> 32) != 0 ? 1 : 0;
         }
         boolean overflow = borrow != 0;
         if (!overflow && otherLen > len) {
-            for (int i = 0; i < otherLen - len; i++) {
+            for (int i = len; i < otherLen; i++) {
                 if (other[i] != 0) {
                     overflow = true;
                     break;
@@ -1165,49 +1080,10 @@ final class Arrays {
     }
 
     static boolean mMultiply(final int[] ints, final int[] other) {
-        int len = ints.length;
-        int otherLen = other.length;
-        Scratchpad pad = SCRATCH.get();
-        int[] a = pad.a;
-        System.arraycopy(ints, 0, a, 0, len);
-        java.util.Arrays.fill(ints, 0);
-        boolean overflow = false;
-        for (int i = len - 1; i >= 0; i--) {
-            long aVal = a[i] & LONG;
-            if (aVal == 0) {
-                continue;
-            }
-            long carry = 0;
-            for (int j = otherLen - 1; j >= 0; j--) {
-                int targetIdx = i - (otherLen - 1 - j);
-                if (targetIdx >= 0) {
-                    long prod = aVal * (other[j] & LONG) + (ints[targetIdx] & LONG) + carry;
-                    ints[targetIdx] = (int) prod;
-                    carry = prod >>> 32;
-                } else {
-                    if (carry != 0) {
-                        overflow = true;
-                        carry = 0;
-                    }
-                    if (other[j] != 0) {
-                        overflow = true;
-                    }
-                }
-            }
-            int carryIdx = i - otherLen;
-            while (carry != 0) {
-                if (carryIdx >= 0) {
-                    long sum = (ints[carryIdx] & LONG) + carry;
-                    ints[carryIdx] = (int) sum;
-                    carry = sum >>> 32;
-                    carryIdx--;
-                } else {
-                    overflow = true;
-                    break;
-                }
-            }
-        }
-        return overflow;
+        boolean[] overflowHolder = new boolean[1];
+        int[] res = multiply(ints, other, ints.length, overflowHolder);
+        System.arraycopy(res, 0, ints, 0, ints.length);
+        return overflowHolder[0];
     }
 
     static boolean mAddMod(final int[] ints, final int[] add, final int[] mod) {
@@ -1218,7 +1094,7 @@ final class Arrays {
         Scratchpad pad = SCRATCH.get();
         int[] tempAdd = pad.tempAdd;
         java.util.Arrays.fill(tempAdd, 0);
-        System.arraycopy(add, 0, tempAdd, tempAdd.length - add.length, add.length);
+        System.arraycopy(add, 0, tempAdd, 0, add.length);
         mModInPlace(tempAdd, mod);
 
         boolean carry = mAdd(ints, tempAdd);
@@ -1236,19 +1112,19 @@ final class Arrays {
         Scratchpad pad = SCRATCH.get();
         int[] tempMul = pad.tempMul;
         java.util.Arrays.fill(tempMul, 0);
-        System.arraycopy(mul, 0, tempMul, tempMul.length - mul.length, mul.length);
+        System.arraycopy(mul, 0, tempMul, 0, mul.length);
         mModInPlace(tempMul, mod);
 
-        System.arraycopy(tempMul, tempMul.length - ints.length, pad.b, 0, ints.length);
+        System.arraycopy(tempMul, 0, pad.b, 0, ints.length);
         int[] product = pad.product;
         mul(ints, ints.length, pad.b, ints.length, product);
 
         int productLen = 2 * ints.length;
-        int start = 0;
-        while (start < productLen && product[start] == 0) {
-            start++;
+        int end = productLen - 1;
+        while (end >= 0 && product[end] == 0) {
+            end--;
         }
-        int cleanLen = productLen - start;
+        int cleanLen = end + 1;
         if (cleanLen == 0) {
             java.util.Arrays.fill(ints, 0);
             return false;
@@ -1256,17 +1132,17 @@ final class Arrays {
 
         int[] productClean = pad.productClean;
         java.util.Arrays.fill(productClean, 0);
-        System.arraycopy(product, start, productClean, 0, cleanLen);
+        System.arraycopy(product, 0, productClean, 0, cleanLen);
 
         int[] tempRes = pad.c;
         java.util.Arrays.fill(tempRes, 0);
-        System.arraycopy(productClean, 0, tempRes, tempRes.length - cleanLen, cleanLen);
+        System.arraycopy(productClean, 0, tempRes, 0, cleanLen);
 
         mModInPlace(tempRes, mod);
 
         java.util.Arrays.fill(ints, 0);
         int copyLen = Math.min(tempRes.length, ints.length);
-        System.arraycopy(tempRes, tempRes.length - copyLen, ints, ints.length - copyLen, copyLen);
+        System.arraycopy(tempRes, 0, ints, 0, copyLen);
         return false;
     }
 
@@ -1274,7 +1150,7 @@ final class Arrays {
         if (exp < 0) throw new ArithmeticException("Negative exponent");
         if (exp == 0) {
             java.util.Arrays.fill(ints, 0);
-            ints[ints.length - 1] = 1;
+            ints[0] = 1;
             return false;
         }
         if (isZero(ints)) {
@@ -1293,44 +1169,44 @@ final class Arrays {
         java.util.Arrays.fill(result, 0);
 
         int len = ints.length;
-        System.arraycopy(ints, 0, base, base.length - len, len);
-        result[result.length - 1] = 1;
+        System.arraycopy(ints, 0, base, 0, len);
+        result[0] = 1;
 
         boolean overflow = false;
         int e = exp;
         while (e > 0) {
             if ((e & 1) == 1) {
-                System.arraycopy(result, result.length - len, pad.c, 0, len);
-                System.arraycopy(base, base.length - len, pad.d, 0, len);
+                System.arraycopy(result, 0, pad.c, 0, len);
+                System.arraycopy(base, 0, pad.d, 0, len);
 
                 mul(pad.c, len, pad.d, len, prod);
 
-                for (int i = 0; i < len; i++) {
+                for (int i = len; i < 2 * len; i++) {
                     if (prod[i] != 0) {
                         overflow = true;
                         break;
                     }
                 }
-                System.arraycopy(prod, len, result, result.length - len, len);
+                System.arraycopy(prod, 0, result, 0, len);
             }
             e >>>= 1;
             if (e > 0) {
-                System.arraycopy(base, base.length - len, pad.c, 0, len);
-                System.arraycopy(base, base.length - len, pad.d, 0, len);
+                System.arraycopy(base, 0, pad.c, 0, len);
+                System.arraycopy(base, 0, pad.d, 0, len);
 
                 mul(pad.c, len, pad.d, len, prod);
 
-                for (int i = 0; i < len; i++) {
+                for (int i = len; i < 2 * len; i++) {
                     if (prod[i] != 0) {
                         overflow = true;
                         break;
                     }
                 }
-                System.arraycopy(prod, len, base, base.length - len, len);
+                System.arraycopy(prod, 0, base, 0, len);
             }
         }
 
-        System.arraycopy(result, result.length - len, ints, 0, len);
+        System.arraycopy(result, 0, ints, 0, len);
         return overflow;
     }
 
@@ -1346,7 +1222,7 @@ final class Arrays {
         }
         if (cmp == 0) {
             java.util.Arrays.fill(ints, 0);
-            ints[ints.length - 1] = 1;
+            ints[0] = 1;
             return false;
         }
 
@@ -1356,32 +1232,35 @@ final class Arrays {
         java.util.Arrays.fill(pad.div, 0);
         java.util.Arrays.fill(pad.d, 0);
 
-        int otherStart = 0;
-        while (otherStart < other.length && other[otherStart] == 0) {
-            otherStart++;
+        int otherEnd = other.length - 1;
+        while (otherEnd >= 0 && other[otherEnd] == 0) {
+            otherEnd--;
         }
-        int otherActiveLen = other.length - otherStart;
-        System.arraycopy(other, otherStart, pad.d, 0, otherActiveLen);
+        int otherActiveLen = otherEnd + 1;
+        System.arraycopy(other, 0, pad.d, 0, otherActiveLen);
 
         int qints;
         if (otherActiveLen == 1) {
             Division.div(ints, ints.length, pad.d[0], pad.quo, pad.rem);
             qints = ints.length;
         } else if (otherActiveLen == 2) {
-            final long divisor = ((pad.d[0] & LONG) << 32) | (pad.d[1] & LONG);
+            final long divisor = ((pad.d[1] & LONG) << 32) | (pad.d[0] & LONG);
             Division.div(ints, ints.length, divisor, pad.quo, pad.rem);
             qints = ints.length - 1;
         } else {
             Division.div(ints, ints.length, pad.d, otherActiveLen, pad.quo, pad.rem, pad.div);
-            int places = Integer.numberOfLeadingZeros(pad.d[0]);
-            int remLen = (0 < places && places > Integer.numberOfLeadingZeros(ints[0])) ? ints.length + 2 : ints.length + 1;
+            int places = Integer.numberOfLeadingZeros(pad.d[otherActiveLen - 1]);
+            int remLen = ints.length + 1;
+            if (0 < places && places > Integer.numberOfLeadingZeros(ints[ints.length - 1])) {
+                remLen = ints.length + 2;
+            }
             qints = remLen - otherActiveLen;
         }
 
         int len = ints.length;
         java.util.Arrays.fill(ints, 0);
         int copyLen = Math.min(qints, len);
-        System.arraycopy(pad.quo, qints - copyLen, ints, len - copyLen, copyLen);
+        System.arraycopy(pad.quo, 0, ints, 0, copyLen);
         return false;
     }
 
@@ -1392,36 +1271,38 @@ final class Arrays {
     }
 
     static int[] sqrt(final int[] a, final int maxWidth) {
-        if (isZero(a)) {
-            return new int[maxWidth];
-        }
-        int bitLen = bitLength(a);
-        int guessShift = (bitLen + 1) / 2;
-        int[] x = setBit(new int[maxWidth], guessShift);
+        int targetWidth = maxWidth == -1 ? a.length : maxWidth;
+        int[] op = copyOf(a, targetWidth);
+        int[] res = new int[targetWidth];
+        int[] one = new int[targetWidth];
+        int[] sum = new int[targetWidth];
 
-        while (true) {
-            int[] divRes;
-            if (compareActive(a, x) < 0) {
-                divRes = new int[maxWidth];
+        int bit = bitLength(op);
+        if (bit == 0) {
+            return res;
+        }
+        if (bit % 2 == 0) {
+            bit -= 2;
+        } else {
+            bit -= 1;
+        }
+        mSetBit(one, bit);
+
+        while (!isZero(one)) {
+            System.arraycopy(res, 0, sum, 0, targetWidth);
+            mAdd(sum, one);
+
+            if (compareActive(op, sum) >= 0) {
+                mSubtract(op, sum);
+                mShiftRight(res, 1);
+                mAdd(res, one);
             } else {
-                divRes = divide(a, x);
+                mShiftRight(res, 1);
             }
-            int[] sum = add(x, divRes, -1);
-            int[] next = rshift(sum, 1, -1);
-
-            if (compareActive(next, x) >= 0) {
-                break;
-            }
-            x = next;
+            mShiftRight(one, 2);
         }
 
-        if (x.length == maxWidth) {
-            return x;
-        }
-        int[] padded = new int[maxWidth];
-        int len = Math.min(x.length, maxWidth);
-        System.arraycopy(x, x.length - len, padded, maxWidth - len, len);
-        return padded;
+        return res;
     }
 
     static boolean mSqrt(final int[] ints) {
@@ -1431,7 +1312,7 @@ final class Arrays {
         int[] res = sqrt(ints, ints.length);
         java.util.Arrays.fill(ints, 0);
         int copyLen = Math.min(res.length, ints.length);
-        System.arraycopy(res, res.length - copyLen, ints, ints.length - copyLen, copyLen);
+        System.arraycopy(res, 0, ints, 0, copyLen);
         return false;
     }
 }

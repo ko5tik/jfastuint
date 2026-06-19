@@ -27,7 +27,16 @@ public abstract class UInt<T extends UInt>
     }
     int[] padded = new int[maxWidth];
     int len = Math.min(ints.length, maxWidth);
-    System.arraycopy(ints, ints.length - len, padded, maxWidth - len, len);
+    System.arraycopy(ints, 0, padded, 0, len);
+    return padded;
+  }
+
+  static int[] padToWidthBE(final int[] ints, final int maxWidth) {
+    int[] padded = new int[maxWidth];
+    int len = Math.min(ints.length, maxWidth);
+    for (int i = 0; i < len; i++) {
+      padded[i] = ints[ints.length - 1 - i];
+    }
     return padded;
   }
 
@@ -40,11 +49,11 @@ public abstract class UInt<T extends UInt>
   }
 
   UInt(final int[] ints, final int maxWidth) {
-    this(padToWidth(ints, maxWidth));
+    this(padToWidthBE(ints, maxWidth));
   }
 
   UInt(final UInt other, final int maxWidth) {
-    this(other.ints, maxWidth);
+    this(padToWidth(other.ints, maxWidth));
   }
 
   UInt(final String s, final int radix, final int maxWidth) {
@@ -52,11 +61,11 @@ public abstract class UInt<T extends UInt>
   }
 
   UInt(final BigInteger b, final int maxWidth) {
-    this(Arrays.from(b, maxWidth), maxWidth);
+    this(padToWidth(Arrays.from(b, maxWidth), maxWidth));
   }
 
   UInt(final byte[] bytes, final UInt maxValue) {
-    this(Arrays.from(bytes, maxValue.ints), maxValue.ints.length);
+    this(padToWidth(Arrays.from(bytes, maxValue.ints), maxValue.ints.length));
   }
 
   /**
@@ -280,7 +289,7 @@ public abstract class UInt<T extends UInt>
       throw new ArithmeticException("Negative bit address");
     }
     final int i = bit >>> 5;
-    return i < ints.length && 0 != (ints[ints.length - i - 1] & (1 << (bit & 31)));
+    return i < ints.length && 0 != (ints[i] & (1 << (bit & 31)));
   }
 
   /**
@@ -297,13 +306,12 @@ public abstract class UInt<T extends UInt>
    * Count the number of bits required to represent this number in binary.
    */
   public final int bitLength() {
-    int firstNonZero = 0;
-    while (firstNonZero < ints.length && ints[firstNonZero] == 0) {
-      firstNonZero++;
+    int firstNonZero = ints.length - 1;
+    while (firstNonZero >= 0 && ints[firstNonZero] == 0) {
+      firstNonZero--;
     }
-    if (firstNonZero == ints.length) return 0;
-    int activeLen = ints.length - firstNonZero;
-    return ((activeLen - 1) * 32) + (32 - Integer.numberOfLeadingZeros(ints[firstNonZero]));
+    if (firstNonZero < 0) return 0;
+    return (firstNonZero * 32) + (32 - Integer.numberOfLeadingZeros(ints[firstNonZero]));
   }
 
   /**
@@ -317,10 +325,9 @@ public abstract class UInt<T extends UInt>
    * Return the index of the right-most set bit, or {@code -1}.
    */
   public final int getLowestSetBit() {
-    final int start = ints.length - 1;
-    for(int i = start; 0 <= i; i--) {
+    for(int i = 0; i < ints.length; i++) {
       if(ints[i] != 0) {
-        return (start - i) * 32 + Integer.numberOfTrailingZeros(ints[i]);
+        return i * 32 + Integer.numberOfTrailingZeros(ints[i]);
       }
     }
     return -1;
@@ -330,13 +337,13 @@ public abstract class UInt<T extends UInt>
    * Return a hash code identical to the equivalent OpenJDK {@code BigInteger}.
    */
   public int hashCode() {
-    int firstNonZero = 0;
-    while (firstNonZero < ints.length && ints[firstNonZero] == 0) {
-      firstNonZero++;
+    int firstNonZero = ints.length - 1;
+    while (firstNonZero >= 0 && ints[firstNonZero] == 0) {
+      firstNonZero--;
     }
-    if (firstNonZero == ints.length) return 0;
+    if (firstNonZero < 0) return 0;
     int out = 0;
-    for (int i = firstNonZero; i < ints.length; i++) {
+    for (int i = firstNonZero; i >= 0; i--) {
       out = (int)(31*out + (ints[i] & LONG));
     }
     return out;
@@ -350,21 +357,19 @@ public abstract class UInt<T extends UInt>
   }
 
   public final int compareTo(final T other) {
-    int thisStart = 0;
-    while (thisStart < this.ints.length && this.ints[thisStart] == 0) {
-      thisStart++;
+    int thisActive = this.ints.length - 1;
+    while (thisActive >= 0 && this.ints[thisActive] == 0) {
+      thisActive--;
     }
-    int otherStart = 0;
-    while (otherStart < other.ints.length && other.ints[otherStart] == 0) {
-      otherStart++;
+    int otherActive = other.ints.length - 1;
+    while (otherActive >= 0 && other.ints[otherActive] == 0) {
+      otherActive--;
     }
-    int thisLen = this.ints.length - thisStart;
-    int otherLen = other.ints.length - otherStart;
-    if (thisLen < otherLen) return -1;
-    if (thisLen > otherLen) return 1;
-    for (int i = 0; i < thisLen; i++) {
-      int aVal = this.ints[thisStart + i];
-      int bVal = other.ints[otherStart + i];
+    if (thisActive < otherActive) return -1;
+    if (thisActive > otherActive) return 1;
+    for (int i = thisActive; i >= 0; i--) {
+      int aVal = this.ints[i];
+      int bVal = other.ints[i];
       if (aVal != bVal) {
         return Integer.compareUnsigned(aVal, bVal);
       }
@@ -389,7 +394,7 @@ public abstract class UInt<T extends UInt>
   }
 
   public final int intValue() {
-    return ints.length == 0 ? 0 : ints[ints.length - 1];
+    return ints.length == 0 ? 0 : ints[0];
   }
 
   public final long longValue() {
@@ -397,8 +402,8 @@ public abstract class UInt<T extends UInt>
     if(len == 0) {
       return 0;
     }
-    final long out = ints[len - 1] & LONG;
-    return ints.length == 1 ? out : ((ints[len - 2] & LONG) << 32 | out);
+    final long out = ints[0] & LONG;
+    return len == 1 ? out : ((ints[1] & LONG) << 32 | out);
   }
 
   public final float floatValue() {
@@ -456,9 +461,9 @@ public abstract class UInt<T extends UInt>
     final int bytes  = (int)Math.ceil(bitLength() / 8.0);
     final byte[] out = new byte[bytes];
 
-    int intsi = ints.length - 1, v = 0;
+    int intsi = 0, v = 0;
     for(int outi = bytes - 1, copied = 0; 0 <= outi; outi--, copied++)
-      out[outi] = (byte)(v = (copied % 4 == 0) ? ints[intsi--] : v >>> 8);
+      out[outi] = (byte)(v = (copied % 4 == 0) ? ints[intsi++] : v >>> 8);
     return out;
   }
 
@@ -466,7 +471,11 @@ public abstract class UInt<T extends UInt>
    * Return a big-endian int array.
    */
   public final int[] toIntArray() {
-    return java.util.Arrays.copyOf(ints, ints.length);
+    int[] out = new int[ints.length];
+    for (int i = 0; i < ints.length; i++) {
+      out[i] = ints[ints.length - 1 - i];
+    }
+    return out;
   }
 
  /**
@@ -496,7 +505,7 @@ public abstract class UInt<T extends UInt>
       return Integer.toUnsignedString(stripped[0], radix);
     }
     if(stripped.length == 2) {
-      return Long.toUnsignedString(((stripped[0] & LONG) << 32) | (stripped[1] & LONG), radix);
+      return Long.toUnsignedString(((stripped[1] & LONG) << 32) | (stripped[0] & LONG), radix);
     }
 
     return StringUtil.toString(stripped, radix);
