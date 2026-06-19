@@ -138,111 +138,100 @@ final class Arrays {
         }
         return false;
     }
-
-    static int[] and(int[] longer, int[] shorter) {
-        if (longer.length < shorter.length) {
-            int[] tmp = longer;
-            longer = shorter;
-            shorter = tmp;
-        }
-        int shortlen = shorter.length;
-        if (shortlen == 0) {
-            return new int[longer.length];
-        }
-
-        final int[] out = new int[shortlen];
-        for (int i = 0; i < shortlen; i++) {
-            out[i] = shorter[i] & longer[i];
-        }
-
-        return stripLeadingZeroes(out);
-    }
-
-    static int[] or(int[] longer, int[] shorter) {
-        if (longer.length < shorter.length) {
-            int[] tmp = longer;
-            longer = shorter;
-            shorter = tmp;
-        }
-        int longlen = longer.length, shortlen = shorter.length;
-        final int[] out = copyOf(longer, longlen);
-
-        for (int i = 0; i < shortlen; i++) {
-            out[i] |= shorter[i];
-        }
-
+    // immutable bitwise and: copies the first operand and applies mutable mAnd
+    static int[] and(final int[] a, final int[] b) {
+        int[] out = copyOf(a, a.length);
+        mAnd(out, b);
         return out;
     }
 
-    static int[] xor(int[] longer, int[] shorter) {
-        if (longer.length < shorter.length) {
-            int[] tmp = longer;
-            longer = shorter;
-            shorter = tmp;
+    // in-place bitwise and mutating the first operand 'ints'
+    static boolean mAnd(final int[] ints, final int[] other) {
+        int len = ints.length;
+        int otherLen = other.length;
+        for (int i = 0; i < len; i++) {
+            ints[i] &= (i < otherLen ? other[i] : 0);
         }
-        int longlen = longer.length, shortlen = shorter.length;
-        if (longlen == 0) {
-            return new int[0];
-        }
-
-        final int[] out = copyOf(longer, longlen);
-
-        for (int i = 0; i < shortlen; i++) {
-            out[i] ^= shorter[i];
-        }
-
-        return stripLeadingZeroes(out);
+        return false;
     }
 
+    // immutable bitwise or: copies the first operand and applies mutable mOr
+    static int[] or(final int[] a, final int[] b) {
+        int[] out = copyOf(a, a.length);
+        mOr(out, b);
+        return out;
+    }
+
+    // in-place bitwise or mutating the first operand 'ints'
+    static boolean mOr(final int[] ints, final int[] other) {
+        int len = ints.length;
+        int otherLen = other.length;
+        for (int i = 0; i < len; i++) {
+            ints[i] |= (i < otherLen ? other[i] : 0);
+        }
+        return false;
+    }
+
+    // immutable bitwise xor: copies the first operand and applies mutable mXor
+    static int[] xor(final int[] a, final int[] b) {
+        int[] out = copyOf(a, a.length);
+        mXor(out, b);
+        return out;
+    }
+
+    // in-place bitwise xor mutating the first operand 'ints'
+    static boolean mXor(final int[] ints, final int[] other) {
+        int len = ints.length;
+        int otherLen = other.length;
+        for (int i = 0; i < len; i++) {
+            ints[i] ^= (i < otherLen ? other[i] : 0);
+        }
+        return false;
+    }
+
+    // immutable setBit: copies the operand and applies mutable mSetBit
     static int[] setBit(final int[] a, final int bit) {
-        final int i = bit >>> 5, alen = a.length;
-
-        if (i < alen) {
-            final int v = a[i] | 1 << (bit & 31);
-            if (v == a[i]) {
-                return a;
-            }
-            final int[] out = copyOf(a, alen);
-            out[i] = v;
-            return out;
-        }
-
-        final int[] out = new int[i + 1];
-        System.arraycopy(a, 0, out, 0, alen);
-
-        out[i] = 1 << (bit & 31);
+        int[] out = copyOf(a, a.length);
+        mSetBit(out, bit);
         return out;
     }
 
+    // in-place setBit mutating 'ints'
+    static boolean mSetBit(final int[] ints, final int bit) {
+        int len = ints.length;
+        if (bit < 0 || bit >= len * 32) return true;
+        ints[bit >>> 5] |= (1 << (bit & 31));
+        return false;
+    }
+
+    // immutable clearBit: copies the operand and applies mutable mClearBit
     static int[] clearBit(final int[] a, final int bit) {
-        final int alen = a.length, i = bit >>> 5;
-        if (i >= alen) {
-            return a;
-        }
-        final int v = a[i] & ~(1 << (bit & 31));
-
-        if (v == a[i]) {
-            return a;
-        }
-
-        final int[] out = copyOf(a, alen);
-        out[i] = v;
+        int[] out = copyOf(a, a.length);
+        mClearBit(out, bit);
         return out;
     }
 
+    // in-place clearBit mutating 'ints'
+    static boolean mClearBit(final int[] ints, final int bit) {
+        int len = ints.length;
+        if (bit < 0 || bit >= len * 32) return true;
+        ints[bit >>> 5] &= ~(1 << (bit & 31));
+        return false;
+    }
+
+    // immutable flipBit: copies the operand and applies mutable mFlipBit
     static int[] flipBit(final int[] a, final int bit) {
-        final int i = bit >>> 5, alen = a.length;
-
-        if (i < alen) {
-            final int[] out = copyOf(a, alen);
-            out[i] ^= (1 << (bit & 31));
-            return out;
-        }
-
-        final int[] out = new int[i + 1];
-        System.arraycopy(a, 0, out, 0, alen);
-        out[i] ^= (1 << (bit & 31));
+        int[] out = copyOf(a, a.length);
+        mFlipBit(out, bit);
         return out;
+    }
+
+    // in-place flipBit mutating 'ints'
+    static boolean mFlipBit(final int[] ints, final int bit) {
+        int len = ints.length;
+        if (bit < 0 || bit >= len * 32) return true;
+        ints[bit >>> 5] ^= (1 << (bit & 31));
+        return false;
     }
 
     static int[] lshift(final int[] a, final int n, final int maxWidth) {
@@ -867,53 +856,9 @@ final class Arrays {
     }
 
 
-    static boolean mAnd(final int[] ints, final int[] other) {
-        int len = ints.length;
-        int otherLen = other.length;
-        for (int i = 0; i < len; i++) {
-            ints[i] &= (i < otherLen ? other[i] : 0);
-        }
-        return false;
-    }
 
-    static boolean mOr(final int[] ints, final int[] other) {
-        int len = ints.length;
-        int otherLen = other.length;
-        for (int i = 0; i < len; i++) {
-            ints[i] |= (i < otherLen ? other[i] : 0);
-        }
-        return false;
-    }
 
-    static boolean mXor(final int[] ints, final int[] other) {
-        int len = ints.length;
-        int otherLen = other.length;
-        for (int i = 0; i < len; i++) {
-            ints[i] ^= (i < otherLen ? other[i] : 0);
-        }
-        return false;
-    }
 
-    static boolean mSetBit(final int[] ints, final int bit) {
-        int len = ints.length;
-        if (bit < 0 || bit >= len * 32) return true;
-        ints[bit >>> 5] |= (1 << (bit & 31));
-        return false;
-    }
-
-    static boolean mClearBit(final int[] ints, final int bit) {
-        int len = ints.length;
-        if (bit < 0 || bit >= len * 32) return true;
-        ints[bit >>> 5] &= ~(1 << (bit & 31));
-        return false;
-    }
-
-    static boolean mFlipBit(final int[] ints, final int bit) {
-        int len = ints.length;
-        if (bit < 0 || bit >= len * 32) return true;
-        ints[bit >>> 5] ^= (1 << (bit & 31));
-        return false;
-    }
 
     static boolean mShiftLeft(final int[] ints, final int places) {
         if (places < 0) {
