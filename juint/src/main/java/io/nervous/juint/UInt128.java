@@ -87,7 +87,7 @@ public final class UInt128 extends UInt<UInt128> {
     public UInt128(final long v) { super(v, MAX_WIDTH); }
 
   public UInt128 not() {
-    return new UInt128(Arrays.not(ints, MAX_VALUE.ints), false);
+    return new UInt128(Arrays.not(ints), false);
   }
 
   public UInt128 and(final UInt128 other) {

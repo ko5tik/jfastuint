@@ -195,7 +195,7 @@ public abstract class Properties<T extends UInt<T>> {
       for (int j = 0; j < ints.length; j++) {
         expected[j] = ~ints[j];
       }
-      Arrays.not(ints);
+      Arrays.mNot(ints);
       assertArrayEquals(expected, ints);
     }
   }

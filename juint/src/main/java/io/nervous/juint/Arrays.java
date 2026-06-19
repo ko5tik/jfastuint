@@ -124,25 +124,19 @@ final class Arrays {
             ;
         return strip == 0 ? bs : copyOfRange(bs, strip, len);
     }
-
-    static int[] not(final int[] ints, final int[] maxValue) {
-        int maxWidth = maxValue.length;
-        final int[] out = new int[maxWidth];
-        int len = ints.length;
-        for (int i = 0; i < len; i++) {
-            out[i] = ~ints[i];
-        }
-        for (int i = len; i < maxWidth; i++) {
-            out[i] = -1;
-        }
+    // immutable version of not
+    static int[] not(final int[] ints) {
+        int[] out = copyOf(ints, ints.length);
+        mNot(out);
         return out;
     }
 
     // in place version of not
-    static void not(final int[] ints) {
+    static boolean mNot(final int[] ints) {
         for (int i = 0; i < ints.length; i++) {
             ints[i] = ~ints[i];
         }
+        return false;
     }
 
     static int[] and(int[] longer, int[] shorter) {
@@ -373,9 +367,9 @@ final class Arrays {
 
     static int[] subgt(final int[] a, final int[] b, final int[] maxValue) {
         if (a.length == 0) {
-            return inc(not(b, maxValue), true, maxValue.length);
+            return inc(not(b), true, maxValue.length);
         }
-        return inc(not(sub(b, a), maxValue), true, maxValue.length);
+        return inc(not(sub(b, a)), true, maxValue.length);
     }
 
     static int[] sub(final int[] a, final int[] b) {
@@ -872,12 +866,6 @@ final class Arrays {
         return true;
     }
 
-    static boolean mNot(final int[] ints) {
-        for (int i = 0; i < ints.length; i++) {
-            ints[i] = ~ints[i];
-        }
-        return false;
-    }
 
     static boolean mAnd(final int[] ints, final int[] other) {
         int len = ints.length;

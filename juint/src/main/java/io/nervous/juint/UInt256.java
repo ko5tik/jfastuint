@@ -85,7 +85,7 @@ public final class UInt256 extends UInt<UInt256> {
   public UInt256(final long v) { super(v, MAX_WIDTH); }
 
   public UInt256 not() {
-    return new UInt256(Arrays.not(ints, MAX_VALUE.ints), false);
+    return new UInt256(Arrays.not(ints), false);
   }
 
   public UInt256 and(final UInt256 other) {
