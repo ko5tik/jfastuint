@@ -84,7 +84,7 @@ public final class UInt128 extends UInt<UInt128> {
    *
    * For low values of {@code v}, an array cache may be used.
    */
-    public UInt128(final long v) { super(v); }
+    public UInt128(final long v) { super(v, MAX_WIDTH); }
 
   public UInt128 not() {
     return new UInt128(Arrays.not(ints, MAX_VALUE.ints));

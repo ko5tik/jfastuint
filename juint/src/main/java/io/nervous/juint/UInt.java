@@ -12,8 +12,18 @@ public abstract class UInt<T extends UInt>
   /* toString */
   static final int DEFAULT_RADIX = 10;
 
-  UInt(final long l) {
-    this.ints = Arrays.valueOf(l);
+  static int[] padToWidth(final int[] ints, final int maxWidth) {
+    if (ints.length == maxWidth) {
+      return ints;
+    }
+    int[] padded = new int[maxWidth];
+    int len = Math.min(ints.length, maxWidth);
+    System.arraycopy(ints, ints.length - len, padded, maxWidth - len, len);
+    return padded;
+  }
+
+  UInt(final long l, final int maxWidth) {
+    this.ints = padToWidth(Arrays.valueOf(l), maxWidth);
   }
 
   UInt(final int[] ints) {
@@ -21,7 +31,7 @@ public abstract class UInt<T extends UInt>
   }
 
   UInt(final int[] ints, final int maxWidth) {
-    this(Arrays.stripLeadingZeroes(ints, Math.max(0, ints.length - maxWidth)));
+    this(padToWidth(ints, maxWidth));
   }
 
   UInt(final UInt other, final int maxWidth) {
@@ -29,7 +39,7 @@ public abstract class UInt<T extends UInt>
   }
 
   UInt(final String s, final int radix, final int maxWidth) {
-    this.ints = StringUtil.fromString(s, radix, maxWidth);
+    this.ints = padToWidth(StringUtil.fromString(s, radix, maxWidth), maxWidth);
   }
 
   UInt(final BigInteger b, final int maxWidth) {

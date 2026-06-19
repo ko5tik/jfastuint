@@ -31,7 +31,7 @@ public class TestUInt256 extends Properties<UInt256> {
       UInt128 small = new UInt128(ints);
       assertEquals(new UInt256(small.toBigInteger()), new UInt256(small));
       assertEquals(small, new UInt128(new UInt256(small)));
-      assertArrayEquals(ints, new UInt256(small).ints);
+      assertArrayEquals(UInt.padToWidth(ints, UInt256.MAX_WIDTH), new UInt256(small).ints);
     }
   }
 }

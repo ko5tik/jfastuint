@@ -107,7 +107,7 @@ final class Arrays {
             return 1;
         }
 
-        return compare(ints, from(other, maxWidth));
+        return compareActive(ints, from(other, maxWidth));
     }
 
     static int[] stripLeadingZeroes(final int[] ints, int strip) {
@@ -472,7 +472,7 @@ final class Arrays {
             return ZERO;
         }
         final int[] mul = mul(a, a.length, b, b.length);
-        final int cmp = compare(mul, c);
+        final int cmp = compareActive(mul, c);
         return (cmp < 0 ? mul : (cmp == 0 ? ZERO : mod(mul, c)));
     }
 
@@ -483,7 +483,7 @@ final class Arrays {
             b = tmp;
         }
         final int[] add = b.length == 0 ? a : add(a, b, -1);
-        final int cmp = compare(add, c);
+        final int cmp = compareActive(add, c);
         return (cmp < 0 ? add : (cmp == 0 ? ZERO : mod(add, c)));
     }
 
@@ -631,6 +631,15 @@ final class Arrays {
             return;
         }
 
+        int modStart = 0;
+        while (modStart < mod.length && mod[modStart] == 0) {
+            modStart++;
+        }
+        int modActiveLen = mod.length - modStart;
+        if (modActiveLen == 0) {
+            throw new ArithmeticException("modulo by zero");
+        }
+
         int start = 0;
         while (start < val.length && val[start] == 0) {
             start++;
@@ -645,24 +654,27 @@ final class Arrays {
         java.util.Arrays.fill(pad.a, 0);
         System.arraycopy(val, start, pad.a, 0, activeLen);
 
+        java.util.Arrays.fill(pad.d, 0);
+        System.arraycopy(mod, modStart, pad.d, 0, modActiveLen);
+
         java.util.Arrays.fill(pad.quo, 0);
         java.util.Arrays.fill(pad.rem, 0);
         java.util.Arrays.fill(pad.div, 0);
 
-        if (mod.length == 1) {
-            Division.div(pad.a, activeLen, mod[0], pad.quo, pad.rem);
+        if (modActiveLen == 1) {
+            Division.div(pad.a, activeLen, pad.d[0], pad.quo, pad.rem);
             java.util.Arrays.fill(val, 0);
             val[val.length - 1] = pad.rem[0];
-        } else if (mod.length == 2) {
-            final long divisor = ((mod[0] & LONG) << 32) | (mod[1] & LONG);
+        } else if (modActiveLen == 2) {
+            final long divisor = ((pad.d[0] & LONG) << 32) | (pad.d[1] & LONG);
             Division.div(pad.a, activeLen, divisor, pad.quo, pad.rem);
             java.util.Arrays.fill(val, 0);
             int srcLen = activeLen + 1;
             int copyLimit = Math.min(srcLen, val.length);
             System.arraycopy(pad.rem, srcLen - copyLimit, val, val.length - copyLimit, copyLimit);
         } else {
-            Division.div(pad.a, activeLen, mod, pad.quo, pad.rem, pad.div);
-            int places = Integer.numberOfLeadingZeros(mod[0]);
+            Division.div(pad.a, activeLen, pad.d, modActiveLen, pad.quo, pad.rem, pad.div);
+            int places = Integer.numberOfLeadingZeros(pad.d[0]);
             int remLen = (0 < places && places > Integer.numberOfLeadingZeros(pad.a[0])) ? activeLen + 2 : activeLen + 1;
             int copyLimit = Math.min(remLen, val.length);
             java.util.Arrays.fill(val, 0);
@@ -810,43 +822,48 @@ final class Arrays {
     }
 
     static int[] divide(final int[] a, final int[] b) {
+        final int[] cleanA = stripLeadingZeroes(a);
+        final int[] cleanB = stripLeadingZeroes(b);
         final int[] q;
 
-        switch (b.length) {
+        switch (cleanB.length) {
             case 1:
-                q = Division.div(a, b[0])[0];
+                q = Division.div(cleanA, cleanB[0])[0];
                 break;
             case 2:
-                final long divisor = ((b[0] & LONG) << 32) | (b[1] & LONG);
-                q = Division.div(a, divisor)[0];
+                final long divisor = ((cleanB[0] & LONG) << 32) | (cleanB[1] & LONG);
+                q = Division.div(cleanA, divisor)[0];
                 break;
             default:
-                q = Division.div(a, b)[0];
+                q = Division.div(cleanA, cleanB)[0];
         }
 
         return q[0] == 0 ? stripLeadingZeroes(q) : q;
     }
 
     static int[] mod(final int[] a, final int[] b) {
+        final int[] cleanA = stripLeadingZeroes(a);
+        final int[] cleanB = stripLeadingZeroes(b);
         final int[] r;
 
-        switch (b.length) {
+        switch (cleanB.length) {
             case 1:
-                r = Division.div(a, b[0])[1];
+                r = Division.div(cleanA, cleanB[0])[1];
                 break;
             case 2:
-                final long divisor = ((b[0] & LONG) << 32) | (b[1] & LONG);
-                r = Division.div(a, divisor)[1];
+                final long divisor = ((cleanB[0] & LONG) << 32) | (cleanB[1] & LONG);
+                r = Division.div(cleanA, divisor)[1];
                 break;
             default:
-                r = Division.div(a, b)[1];
+                r = Division.div(cleanA, cleanB)[1];
         }
 
         return r[0] == 0 ? stripLeadingZeroes(r) : r;
     }
 
     static int[][] divmod(final int[] a, final long b) {
-        final int[][] qr = Division.div(a, b);
+        final int[] cleanA = stripLeadingZeroes(a);
+        final int[][] qr = Division.div(cleanA, b);
 
         if (0 < qr[0].length && qr[0][0] == 0)
             qr[0] = stripLeadingZeroes(qr[0]);
@@ -857,18 +874,20 @@ final class Arrays {
     }
 
     static int[][] divmod(final int[] a, final int[] b) {
+        final int[] cleanA = stripLeadingZeroes(a);
+        final int[] cleanB = stripLeadingZeroes(b);
         final int[][] qr;
 
-        switch (b.length) {
+        switch (cleanB.length) {
             case 1:
-                qr = Division.div(a, b[0]);
+                qr = Division.div(cleanA, cleanB[0]);
                 break;
             case 2:
-                final long divisor = ((b[0] & LONG) << 32) | (b[1] & LONG);
-                qr = Division.div(a, divisor);
+                final long divisor = ((cleanB[0] & LONG) << 32) | (cleanB[1] & LONG);
+                qr = Division.div(cleanA, divisor);
                 break;
             default:
-                qr = Division.div(a, b);
+                qr = Division.div(cleanA, cleanB);
         }
 
         if (0 < qr[0].length && qr[0][0] == 0)
@@ -1341,20 +1360,28 @@ final class Arrays {
         java.util.Arrays.fill(pad.quo, 0);
         java.util.Arrays.fill(pad.rem, 0);
         java.util.Arrays.fill(pad.div, 0);
+        java.util.Arrays.fill(pad.d, 0);
+
+        int otherStart = 0;
+        while (otherStart < other.length && other[otherStart] == 0) {
+            otherStart++;
+        }
+        int otherActiveLen = other.length - otherStart;
+        System.arraycopy(other, otherStart, pad.d, 0, otherActiveLen);
 
         int qints;
-        if (other.length == 1) {
-            Division.div(ints, ints.length, other[0], pad.quo, pad.rem);
+        if (otherActiveLen == 1) {
+            Division.div(ints, ints.length, pad.d[0], pad.quo, pad.rem);
             qints = ints.length;
-        } else if (other.length == 2) {
-            final long divisor = ((other[0] & LONG) << 32) | (other[1] & LONG);
+        } else if (otherActiveLen == 2) {
+            final long divisor = ((pad.d[0] & LONG) << 32) | (pad.d[1] & LONG);
             Division.div(ints, ints.length, divisor, pad.quo, pad.rem);
             qints = ints.length - 1;
         } else {
-            Division.div(ints, ints.length, other, pad.quo, pad.rem, pad.div);
-            int places = Integer.numberOfLeadingZeros(other[0]);
+            Division.div(ints, ints.length, pad.d, otherActiveLen, pad.quo, pad.rem, pad.div);
+            int places = Integer.numberOfLeadingZeros(pad.d[0]);
             int remLen = (0 < places && places > Integer.numberOfLeadingZeros(ints[0])) ? ints.length + 2 : ints.length + 1;
-            qints = remLen - other.length;
+            qints = remLen - otherActiveLen;
         }
 
         int len = ints.length;

@@ -82,7 +82,7 @@ public final class UInt256 extends UInt<UInt256> {
    *
    * For low values of {@code v}, an array cache may be used.
    */
-  public UInt256(final long v) { super(v); }
+  public UInt256(final long v) { super(v, MAX_WIDTH); }
 
   public UInt256 not() {
     return new UInt256(Arrays.not(ints, MAX_VALUE.ints));

@@ -384,15 +384,15 @@ final class Division {
   }
 
   // Non-allocating division helper: divisor is an int[]
-  static void div(final int[] a, final int aLen, final int[] b, final int[] quo, final int[] rem, final int[] divScratch) {
+  static void div(final int[] a, final int aLen, final int[] b, final int bLen, final int[] quo, final int[] rem, final int[] divScratch) {
     final int places = Integer.numberOfLeadingZeros(b[0]);
     final int[] activeDiv;
     final int remLen;
 
     if(0 < places) {
       activeDiv = divScratch;
-      java.util.Arrays.fill(divScratch, 0, b.length + 1, 0);
-      copyshift(b, 0, activeDiv, 0, places, b.length);
+      java.util.Arrays.fill(divScratch, 0, bLen + 1, 0);
+      copyshift(b, 0, activeDiv, 0, places, bLen);
 
       if(places <= Integer.numberOfLeadingZeros(a[0])) {
         remLen = aLen + 1;
@@ -414,7 +414,7 @@ final class Division {
       System.arraycopy(a, 0, rem, 1, aLen);
     }
 
-    final int qints = remLen - b.length;
+    final int qints = remLen - bLen;
     java.util.Arrays.fill(quo, 0, qints + 1, 0);
 
     final int  dh  = activeDiv[0];
@@ -424,7 +424,7 @@ final class Division {
     int qhat;
     for(int i = 0; i < qints; i++) {
       if((qhat = D3(i, rem, dh, dhl, dl)) != 0) {
-        quo[i] = D4_D5(i, rem, activeDiv, qhat, b.length);
+        quo[i] = D4_D5(i, rem, activeDiv, qhat, bLen);
       }
     }
 
