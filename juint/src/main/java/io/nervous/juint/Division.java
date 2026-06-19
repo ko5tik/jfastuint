@@ -253,21 +253,33 @@ final class Division {
   }
 
   static void lshunt(final int[] a, final int places) {
+    lshunt(a, places, a.length);
+  }
+
+  static void lshunt(final int[] a, final int places, final int len) {
     final int invplaces = 32 - places;
-    for(int ai = 0, lim = ai + a.length- 1; ai < lim; ai++)
+    for(int ai = 0, lim = len - 1; ai < lim; ai++)
       a[ai]  = (a[ai] << places) | (a[ai + 1] >>> invplaces);
-    a[a.length - 1] <<= places;
+    a[len - 1] <<= places;
   }
 
   private static void rshunt(final int[] a, final int places) {
+    rshunt(a, places, a.length);
+  }
+
+  private static void rshunt(final int[] a, final int places, final int len) {
     int invplaces = 32 - places;
-    for(int ai = a.length - 1; 0 < ai; ai--)
+    for(int ai = len - 1; 0 < ai; ai--)
       a[ai] = (a[ai - 1] << invplaces) | (a[ai] >>> places);
     a[0] >>>= places;
   }
 
   private static void rshift(final int[] a, final int places) {
-    if(a.length == 0) {
+    rshift(a, places, a.length);
+  }
+
+  private static void rshift(final int[] a, final int places, final int len) {
+    if(len == 0) {
       return;
     }
     final int bits = places & 0x1F;
@@ -275,23 +287,174 @@ final class Division {
       return;
     }
     if(Integer.bitCount(a[0]) <= bits) {
-      lshunt(a, 32 - bits);
-      for(int ai = a.length - 1; 0 < ai; ai--) {
+      lshunt(a, 32 - bits, len);
+      for(int ai = len - 1; 0 < ai; ai--) {
         a[ai] = a[ai - 1];
       }
       a[0] = 0;
     } else {
-      rshunt(a, bits);
+      rshunt(a, bits, len);
     }
   }
 
   private static void copyshift(
     final int[] src, int srci, final int[] dst, final int dsti, final int places) {
+    copyshift(src, srci, dst, dsti, places, src.length);
+  }
+
+  private static void copyshift(
+    final int[] src, int srci, final int[] dst, final int dsti, final int places, final int srcLen) {
     final int invplaces = 32 - places;
 
     int carry = src[srci];
-    for(int i = 0; i < src.length - 1; i++)
+    for(int i = 0; i < srcLen - 1; i++)
       dst[dsti + i] = (carry << places) | ((carry = src[++srci]) >>> invplaces);
-    dst[dsti + src.length - 1] = carry << places;
+    dst[dsti + srcLen - 1] = carry << places;
+  }
+
+  // Non-allocating division helper: divisor is a single int
+  static void div(final int[] a, final int aLen, final int b, final int[] quo, final int[] remOut) {
+    final long bl = b & LONG;
+
+    if(aLen == 1) {
+      final long al = a[0] & LONG;
+      quo[0] = (int)(al / bl);
+      remOut[0] = (int)(al % bl);
+      return;
+    }
+
+    System.arraycopy(a, 0, quo, 0, aLen);
+    final int places = Integer.numberOfLeadingZeros(b);
+    int  rem         = a[0], alen = aLen;
+    final long reml  = rem & LONG;
+
+    if(reml < bl) {
+      quo[0] = 0;
+    } else {
+      quo[0] = (int)(reml / bl);
+      rem    = (int)(reml % bl);
+    }
+
+    while(0 < --alen) {
+      final long est = ((rem & LONG) << 32) | (a[aLen - alen] & LONG);
+      final int q;
+      if(0 <= est) {
+        q   = (int)(est / bl);
+        rem = (int)(est % bl);
+      } else {
+        long tmp = divone(est, b & LONG);
+        q   = (int)(tmp & LONG);
+        rem = (int)(tmp >>> 32);
+      }
+      quo[aLen - alen] = q;
+    }
+
+    remOut[0] = 0 < places ? rem % b : rem;
+  }
+
+  // Non-allocating division helper: divisor is a long
+  static void div(final int[] a, final int aLen, long b, final int[] quo, final int[] rem) {
+    final int  alen = aLen;
+
+    java.util.Arrays.fill(rem, 0, alen + 2, 0);
+    java.util.Arrays.fill(quo, 0, alen, 0);
+
+    System.arraycopy(a, 0, rem, 1, alen);
+
+    final int places = Long.numberOfLeadingZeros(b);
+    if(0 < places) {
+      lshunt(rem, places, alen + 1);
+      b <<= places;
+    }
+
+    final int   dh = (int)(b >>> 32);
+    final long dhl = dh & LONG;
+    final int   dl = (int)(b & LONG);
+
+    int qhat;
+    for(int i = 0; i < alen - 1; i++) {
+      if((qhat = D3(i, rem, dh, dhl, dl)) != 0) {
+        quo[i] = D4_D5(i, rem, dh, dl, qhat);
+      }
+    }
+
+    if(0 < places) {
+      rshift(rem, places, alen + 1);
+    }
+  }
+
+  // Non-allocating division helper: divisor is an int[]
+  static void div(final int[] a, final int aLen, final int[] b, final int[] quo, final int[] rem, final int[] divScratch) {
+    final int places = Integer.numberOfLeadingZeros(b[0]);
+    final int[] activeDiv;
+    final int remLen;
+
+    if(0 < places) {
+      activeDiv = divScratch;
+      java.util.Arrays.fill(divScratch, 0, b.length + 1, 0);
+      copyshift(b, 0, activeDiv, 0, places, b.length);
+
+      if(places <= Integer.numberOfLeadingZeros(a[0])) {
+        remLen = aLen + 1;
+        java.util.Arrays.fill(rem, 0, remLen + 1, 0);
+        copyshift(a, 0, rem, 1, places, aLen);
+      } else {
+        remLen = aLen + 2;
+        java.util.Arrays.fill(rem, 0, remLen + 1, 0);
+        final int invp = 32 - places;
+        int c          = 0;
+        for(int i = 0; i < aLen; i++)
+          rem[i + 1] = (c << places) | ((c = a[i]) >>> invp);
+        rem[aLen + 1] = c << places;
+      }
+    } else {
+      activeDiv = b;
+      remLen = aLen + 1;
+      java.util.Arrays.fill(rem, 0, remLen + 1, 0);
+      System.arraycopy(a, 0, rem, 1, aLen);
+    }
+
+    final int qints = remLen - b.length;
+    java.util.Arrays.fill(quo, 0, qints + 1, 0);
+
+    final int  dh  = activeDiv[0];
+    final int  dl  = activeDiv[1];
+    final long dhl = dh & LONG;
+
+    int qhat;
+    for(int i = 0; i < qints; i++) {
+      if((qhat = D3(i, rem, dh, dhl, dl)) != 0) {
+        quo[i] = D4_D5(i, rem, activeDiv, qhat, b.length);
+      }
+    }
+
+    if(0 < places) {
+      rshift(rem, places, remLen);
+    }
+  }
+
+  private static int D4_D5(
+    final int i, final int[] rem, final int[] divisor, final int qhat, final int divLen) {
+
+    final int tmp     = rem[i];
+    rem[i]            = 0;
+    final int borrow  = mulsub(rem, divisor, qhat & LONG, divLen, i);
+
+    if(tmp + 0x80000000 < borrow + 0x80000000) {
+      divadd(divisor, rem, i + 1, divLen);
+      return qhat - 1;
+    }
+    return qhat;
+  }
+
+  private static int divadd(final int[] a, final int[] result, final int offset, final int aLen) {
+    long carry = 0;
+
+    for(int ai = aLen - 1; 0 <= ai; ai--) {
+      long sum            = (a[ai] & LONG) + (result[ai + offset] & LONG) + carry;
+      result[ai + offset] = (int)sum;
+      carry               = sum >>> 32;
+    }
+    return (int)carry;
   }
 }

@@ -4,64 +4,18 @@ This is a fork of JUINT implementation.  Why?  Because I want it mutable.  When 
 high performance in java, the first rule is to save on garbage collection.  Best way is to 
 not make garbage. Mutable objects are the best way to do that.
 
-Here I attempt to keep the logic but add mutability.  Maybe it will be merged back - when original 
+Here I attempt to keep the logic but add mutability.  Maybe it will be merged back – when original 
 developers agree.  
 
 All licenses apply. 
 
-
-# JUInt [![CircleCI](https://circleci.com/gh/nervous-systems/juint/tree/master.png?style=shield&circle-token=6f13ee621838019658e21ab69a65f3fe7743401f)](https://circleci.com/gh/nervous-systems/juint/tree/master) [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.nervous/juint/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.nervous/juint)
-
-Optimized, immutable Java implementations of fixed-width, unsigned integers.
-Currently 128 bit
-([UInt128](https://nervous.io/doc/juint/io/nervous/juint/UInt128.html)) and 256
-bit ([UInt256](https://nervous.io/doc/juint/io/nervous/juint/UInt256.html))
-variants are available (with identical, `BigInteger`-style interfaces). It'd be
-trivial to offer differently sized integers with the same semantics, as all
-operations are implemented statically in terms of arrays.
-
-`juint` requires Java 8.
-
 ## Documentation
-### Javadoc
- - [UInt128](https://nervous.io/doc/juint/io/nervous/juint/UInt128.html)
- - [UInt256](https://nervous.io/doc/juint/io/nervous/juint/UInt256.html)
+
+See original documentation [here](https://github.com/nervous-systems/java-unsigned-integers).
 
 ## Performance
 
-Ignoring constant overhead, per-instance memory consumption is identical to
-`BigInteger`'s best case - i.e. an array holding the minimum number of integers
-required to represent a given number - never zero prefixed.
-
-Operation throughput is expected to be significantly higher than OpenJDK's
-`BigInteger` for most operations (often dramatically so). There are exhaustive
-(around 170) JMH micro-benchmarks per operation & magnitude in the `bench`
-subproject.
-
-![graph](static/uint256.png)
-
-and some updated 2023 benchmarks:
-
-![graph](static/uint256-2023.png)
-
-![graph](static/uint256-tuweni.png)
-
-Each operation's bar represents the average throughput across all of its
-magnitude-specific benchmark cases, relative to identical benchmarks which
-operate on `BigInteger`. Typically, in the case of `UInt256`, there'd be
-separate cases for one word, two words, four words (half) and 8 words (full),
-each operating on a range of similarly wide values.
-
-Erring on the side of fairness, the `BigInteger` reference benchmarks only
-include the cost of constraining the result within the maximum width if the
-operation _will definitely_ overflow. As this approach requires a degree of
-foreknowledge present in few real-life use cases, relative throughput
-may be significantly improved from that depicted.
-
-The `multiply` disparity above is due to HotSpot's intrinsification of
-`BigInteger.multiplyToLen`, a private method used by `BigInteger.multiply` (and
-`pow`, by association) - obviously not an optimization strategy available to
-library code.
+Needs to be investigated. 
 
 ## Building and Releasing
 

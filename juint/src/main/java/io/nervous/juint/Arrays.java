@@ -24,6 +24,22 @@ final class Arrays {
     static final int[] ONE = CACHE[1];
     static final int[] TWO = CACHE[2];
 
+    static final class Scratchpad {
+        final int[] a = new int[128];
+        final int[] b = new int[128];
+        final int[] c = new int[128];
+        final int[] d = new int[128];
+        final int[] quo = new int[128];
+        final int[] rem = new int[128];
+        final int[] div = new int[128];
+        final int[] tempAdd = new int[128];
+        final int[] tempMul = new int[128];
+        final int[] product = new int[128];
+        final int[] productClean = new int[128];
+    }
+
+    static final ThreadLocal<Scratchpad> SCRATCH = ThreadLocal.withInitial(Scratchpad::new);
+
     static int[] valueOf(final long v) {
         if (0 <= v && v < MAX_CACHE) {
             return CACHE[(int) v];
@@ -49,6 +65,36 @@ final class Arrays {
             }
         }
 
+        return 0;
+    }
+
+    static int compareActive(final int[] a, final int[] b) {
+        int aStart = 0;
+        while (aStart < a.length && a[aStart] == 0) {
+            aStart++;
+        }
+        int aLen = a.length - aStart;
+
+        int bStart = 0;
+        while (bStart < b.length && b[bStart] == 0) {
+            bStart++;
+        }
+        int bLen = b.length - bStart;
+
+        if (aLen < bLen) {
+            return -1;
+        }
+        if (aLen > bLen) {
+            return 1;
+        }
+
+        for (int i = 0; i < aLen; i++) {
+            int aVal = a[aStart + i];
+            int bVal = b[bStart + i];
+            if (aVal != bVal) {
+                return Integer.compareUnsigned(aVal, bVal);
+            }
+        }
         return 0;
     }
 
@@ -546,6 +592,84 @@ final class Arrays {
         return carry == 0L ? stripLeadingZeroes(out, 1) : out;
     }
 
+    static void mul(
+            final int[] a, final int alen, final int[] b, final int blen, final int[] out) {
+
+        final int outlen = alen + blen;
+        java.util.Arrays.fill(out, 0, outlen, 0);
+        final int astart = alen - 1, bstart = blen - 1;
+        long carry = 0;
+
+        for (int bi = bstart, outi = outlen - 1; 0 <= bi; bi--, outi--) {
+            final long prod = (b[bi] & LONG) * (a[astart] & LONG) + carry;
+            out[outi] = (int) prod;
+            carry = prod >>> 32;
+        }
+        out[astart] = (int) carry;
+
+        for (int ai = astart - 1; 0 <= ai; ai--) {
+            carry = 0;
+            for (int bi = bstart, outi = bstart + ai + 1; 0 <= bi; bi--, outi--) {
+                final long prod = (b[bi] & LONG) * (a[ai] & LONG) + (out[outi] & LONG) + carry;
+                out[outi] = (int) prod;
+                carry = prod >>> 32;
+            }
+            out[ai] = (int) carry;
+        }
+    }
+
+    static void mModInPlace(final int[] val, final int[] mod) {
+        if (isZero(val)) {
+            return;
+        }
+        int cmp = compareActive(val, mod);
+        if (cmp < 0) {
+            return;
+        }
+        if (cmp == 0) {
+            java.util.Arrays.fill(val, 0);
+            return;
+        }
+
+        int start = 0;
+        while (start < val.length && val[start] == 0) {
+            start++;
+        }
+        int activeLen = val.length - start;
+        if (activeLen == 0) {
+            java.util.Arrays.fill(val, 0);
+            return;
+        }
+
+        Scratchpad pad = SCRATCH.get();
+        java.util.Arrays.fill(pad.a, 0);
+        System.arraycopy(val, start, pad.a, 0, activeLen);
+
+        java.util.Arrays.fill(pad.quo, 0);
+        java.util.Arrays.fill(pad.rem, 0);
+        java.util.Arrays.fill(pad.div, 0);
+
+        if (mod.length == 1) {
+            Division.div(pad.a, activeLen, mod[0], pad.quo, pad.rem);
+            java.util.Arrays.fill(val, 0);
+            val[val.length - 1] = pad.rem[0];
+        } else if (mod.length == 2) {
+            final long divisor = ((mod[0] & LONG) << 32) | (mod[1] & LONG);
+            Division.div(pad.a, activeLen, divisor, pad.quo, pad.rem);
+            java.util.Arrays.fill(val, 0);
+            int srcLen = activeLen + 1;
+            int copyLimit = Math.min(srcLen, val.length);
+            System.arraycopy(pad.rem, srcLen - copyLimit, val, val.length - copyLimit, copyLimit);
+        } else {
+            Division.div(pad.a, activeLen, mod, pad.quo, pad.rem, pad.div);
+            int places = Integer.numberOfLeadingZeros(mod[0]);
+            int remLen = (0 < places && places > Integer.numberOfLeadingZeros(pad.a[0])) ? activeLen + 2 : activeLen + 1;
+            int copyLimit = Math.min(remLen, val.length);
+            java.util.Arrays.fill(val, 0);
+            System.arraycopy(pad.rem, remLen - copyLimit, val, val.length - copyLimit, copyLimit);
+        }
+    }
+
     static int[] mul(
             final int[] a, final int alen, final int[] b, final int blen,
             final int outlen, final int trunc) {
@@ -1030,7 +1154,9 @@ final class Arrays {
     static boolean mMultiply(final int[] ints, final int[] other) {
         int len = ints.length;
         int otherLen = other.length;
-        int[] a = copyOf(ints, len);
+        Scratchpad pad = SCRATCH.get();
+        int[] a = pad.a;
+        System.arraycopy(ints, 0, a, 0, len);
         java.util.Arrays.fill(ints, 0);
         boolean overflow = false;
         for (int i = len - 1; i >= 0; i--) {
@@ -1073,42 +1199,125 @@ final class Arrays {
 
     static boolean mAddMod(final int[] ints, final int[] add, final int[] mod) {
         if (isZero(mod)) throw new ArithmeticException("modulo by zero");
-        BigInteger a = toBigInteger(ints);
-        BigInteger b = toBigInteger(add);
-        BigInteger m = toBigInteger(mod);
-        BigInteger res = a.add(b).mod(m);
-        int[] resInts = from(res, ints.length);
-        int len = ints.length;
-        java.util.Arrays.fill(ints, 0);
-        int copyLen = Math.min(resInts.length, len);
-        System.arraycopy(resInts, resInts.length - copyLen, ints, len - copyLen, copyLen);
+
+        mModInPlace(ints, mod);
+
+        Scratchpad pad = SCRATCH.get();
+        int[] tempAdd = pad.tempAdd;
+        java.util.Arrays.fill(tempAdd, 0);
+        System.arraycopy(add, 0, tempAdd, tempAdd.length - add.length, add.length);
+        mModInPlace(tempAdd, mod);
+
+        boolean carry = mAdd(ints, tempAdd);
+        if (carry || compareActive(ints, mod) >= 0) {
+            mSubtract(ints, mod);
+        }
         return false;
     }
 
     static boolean mMulMod(final int[] ints, final int[] mul, final int[] mod) {
         if (isZero(mod)) throw new ArithmeticException("modulo by zero");
-        BigInteger a = toBigInteger(ints);
-        BigInteger b = toBigInteger(mul);
-        BigInteger m = toBigInteger(mod);
-        BigInteger res = a.multiply(b).mod(m);
-        int[] resInts = from(res, ints.length);
-        int len = ints.length;
+
+        mModInPlace(ints, mod);
+
+        Scratchpad pad = SCRATCH.get();
+        int[] tempMul = pad.tempMul;
+        java.util.Arrays.fill(tempMul, 0);
+        System.arraycopy(mul, 0, tempMul, tempMul.length - mul.length, mul.length);
+        mModInPlace(tempMul, mod);
+
+        System.arraycopy(tempMul, tempMul.length - ints.length, pad.b, 0, ints.length);
+        int[] product = pad.product;
+        mul(ints, ints.length, pad.b, ints.length, product);
+
+        int productLen = 2 * ints.length;
+        int start = 0;
+        while (start < productLen && product[start] == 0) {
+            start++;
+        }
+        int cleanLen = productLen - start;
+        if (cleanLen == 0) {
+            java.util.Arrays.fill(ints, 0);
+            return false;
+        }
+
+        int[] productClean = pad.productClean;
+        java.util.Arrays.fill(productClean, 0);
+        System.arraycopy(product, start, productClean, 0, cleanLen);
+
+        int[] tempRes = pad.c;
+        java.util.Arrays.fill(tempRes, 0);
+        System.arraycopy(productClean, 0, tempRes, tempRes.length - cleanLen, cleanLen);
+
+        mModInPlace(tempRes, mod);
+
         java.util.Arrays.fill(ints, 0);
-        int copyLen = Math.min(resInts.length, len);
-        System.arraycopy(resInts, resInts.length - copyLen, ints, len - copyLen, copyLen);
+        int copyLen = Math.min(tempRes.length, ints.length);
+        System.arraycopy(tempRes, tempRes.length - copyLen, ints, ints.length - copyLen, copyLen);
         return false;
     }
 
     static boolean mPow(final int[] ints, final int exp) {
         if (exp < 0) throw new ArithmeticException("Negative exponent");
-        BigInteger base = toBigInteger(ints);
-        BigInteger res = base.pow(exp);
-        int[] resInts = from(res, ints.length);
+        if (exp == 0) {
+            java.util.Arrays.fill(ints, 0);
+            ints[ints.length - 1] = 1;
+            return false;
+        }
+        if (isZero(ints)) {
+            return false;
+        }
+        if (ints.length == 1 && ints[0] == 1) {
+            return false;
+        }
+
+        Scratchpad pad = SCRATCH.get();
+        int[] base = pad.a;
+        int[] result = pad.b;
+        int[] prod = pad.product;
+
+        java.util.Arrays.fill(base, 0);
+        java.util.Arrays.fill(result, 0);
+
         int len = ints.length;
-        boolean overflow = res.bitLength() > len * 32;
-        java.util.Arrays.fill(ints, 0);
-        int copyLen = Math.min(resInts.length, len);
-        System.arraycopy(resInts, resInts.length - copyLen, ints, len - copyLen, copyLen);
+        System.arraycopy(ints, 0, base, base.length - len, len);
+        result[result.length - 1] = 1;
+
+        boolean overflow = false;
+        int e = exp;
+        while (e > 0) {
+            if ((e & 1) == 1) {
+                System.arraycopy(result, result.length - len, pad.c, 0, len);
+                System.arraycopy(base, base.length - len, pad.d, 0, len);
+
+                mul(pad.c, len, pad.d, len, prod);
+
+                for (int i = 0; i < len; i++) {
+                    if (prod[i] != 0) {
+                        overflow = true;
+                        break;
+                    }
+                }
+                System.arraycopy(prod, len, result, result.length - len, len);
+            }
+            e >>>= 1;
+            if (e > 0) {
+                System.arraycopy(base, base.length - len, pad.c, 0, len);
+                System.arraycopy(base, base.length - len, pad.d, 0, len);
+
+                mul(pad.c, len, pad.d, len, prod);
+
+                for (int i = 0; i < len; i++) {
+                    if (prod[i] != 0) {
+                        overflow = true;
+                        break;
+                    }
+                }
+                System.arraycopy(prod, len, base, base.length - len, len);
+            }
+        }
+
+        System.arraycopy(result, result.length - len, ints, 0, len);
         return overflow;
     }
 
@@ -1117,7 +1326,7 @@ final class Arrays {
         if (isZero(ints)) {
             return false;
         }
-        int cmp = compare(ints, other);
+        int cmp = compareActive(ints, other);
         if (cmp < 0) {
             java.util.Arrays.fill(ints, 0);
             return false;
@@ -1127,30 +1336,37 @@ final class Arrays {
             ints[ints.length - 1] = 1;
             return false;
         }
-        int[] res = divide(ints, other);
+
+        Scratchpad pad = SCRATCH.get();
+        java.util.Arrays.fill(pad.quo, 0);
+        java.util.Arrays.fill(pad.rem, 0);
+        java.util.Arrays.fill(pad.div, 0);
+
+        int qints;
+        if (other.length == 1) {
+            Division.div(ints, ints.length, other[0], pad.quo, pad.rem);
+            qints = ints.length;
+        } else if (other.length == 2) {
+            final long divisor = ((other[0] & LONG) << 32) | (other[1] & LONG);
+            Division.div(ints, ints.length, divisor, pad.quo, pad.rem);
+            qints = ints.length - 1;
+        } else {
+            Division.div(ints, ints.length, other, pad.quo, pad.rem, pad.div);
+            int places = Integer.numberOfLeadingZeros(other[0]);
+            int remLen = (0 < places && places > Integer.numberOfLeadingZeros(ints[0])) ? ints.length + 2 : ints.length + 1;
+            qints = remLen - other.length;
+        }
+
         int len = ints.length;
         java.util.Arrays.fill(ints, 0);
-        int copyLen = Math.min(res.length, len);
-        System.arraycopy(res, res.length - copyLen, ints, len - copyLen, copyLen);
+        int copyLen = Math.min(qints, len);
+        System.arraycopy(pad.quo, qints - copyLen, ints, len - copyLen, copyLen);
         return false;
     }
 
     static boolean mMod(final int[] ints, final int[] other) {
         if (isZero(other)) throw new ArithmeticException("modulo by zero");
-        if (isZero(ints)) return false;
-        int cmp = compare(ints, other);
-        if (cmp < 0) {
-            return false;
-        }
-        if (cmp == 0) {
-            java.util.Arrays.fill(ints, 0);
-            return false;
-        }
-        int[] res = mod(ints, other);
-        int len = ints.length;
-        java.util.Arrays.fill(ints, 0);
-        int copyLen = Math.min(res.length, len);
-        System.arraycopy(res, res.length - copyLen, ints, len - copyLen, copyLen);
+        mModInPlace(ints, other);
         return false;
     }
 }
