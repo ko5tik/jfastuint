@@ -496,9 +496,43 @@ final class Arrays {
         Scratchpad pad = SCRATCH.get();
         int[] product = pad.product;
 
-        mul(ints, alen, other, blen, product);
+        java.util.Arrays.fill(product, 0, maxWidth, 0);
 
         boolean overflow = false;
+        for (int i = 0; i < alen; i++) {
+            long aVal = ints[i] & LONG;
+            if (aVal == 0) continue;
+            long carry = 0;
+            for (int j = 0; j < blen; j++) {
+                int targetIdx = i + j;
+                if (targetIdx < maxWidth) {
+                    long prod = aVal * (other[j] & LONG) + (product[targetIdx] & LONG) + carry;
+                    product[targetIdx] = (int) prod;
+                    carry = prod >>> 32;
+                } else {
+                    if (carry != 0) {
+                        overflow = true;
+                        carry = 0;
+                    }
+                    if (other[j] != 0) {
+                        overflow = true;
+                    }
+                }
+            }
+            int carryIdx = i + blen;
+            while (carry != 0) {
+                if (carryIdx < maxWidth) {
+                    long sum = (product[carryIdx] & LONG) + carry;
+                    product[carryIdx] = (int) sum;
+                    carry = sum >>> 32;
+                    carryIdx++;
+                } else {
+                    overflow = true;
+                    break;
+                }
+            }
+        }
+
         if (other.length > maxWidth) {
             for (int i = maxWidth; i < other.length; i++) {
                 if (other[i] != 0) {
@@ -508,36 +542,14 @@ final class Arrays {
             }
         }
 
-        for (int i = maxWidth; i < alen + blen; i++) {
-            if (product[i] != 0) {
-                overflow = true;
-                break;
-            }
-        }
-
         System.arraycopy(product, 0, ints, 0, maxWidth);
         return overflow;
     }
 
-    static int[] mulmod(int[] a, int[] b, final int[] c) {
-        if (a.length < b.length) {
-            int[] tmp = a;
-            a = b;
-            b = tmp;
-        }
-        if (b.length == 0) {
-            return new int[c.length];
-        }
-        final int[] mul = multiply(copyOf(a, a.length + b.length), b);
-        final int cmp = compareActive(mul, c);
-        int[] res = (cmp < 0 ? mul : (cmp == 0 ? ZERO : mod(mul, c)));
-        if (res.length == c.length) {
-            return res;
-        }
-        int[] padded = new int[c.length];
-        int len = Math.min(res.length, c.length);
-        System.arraycopy(res, 0, padded, 0, len);
-        return padded;
+    static int[] mulmod(final int[] a, final int[] b, final int[] c) {
+        int[] out = copyOf(a, c.length);
+        mMulMod(out, b, c);
+        return out;
     }
 
     static boolean mMulMod(final int[] ints, final int[] mul, final int[] mod) {
@@ -551,56 +563,19 @@ final class Arrays {
         System.arraycopy(mul, 0, tempMul, 0, mul.length);
         mModInPlace(tempMul, mod);
 
-        System.arraycopy(tempMul, 0, pad.b, 0, ints.length);
-        int[] product = pad.product;
-        mul(ints, ints.length, pad.b, ints.length, product);
+        int[] tempRes = new int[2 * ints.length];
+        System.arraycopy(ints, 0, tempRes, 0, ints.length);
 
-        int productLen = 2 * ints.length;
-        int end = productLen - 1;
-        while (end >= 0 && product[end] == 0) {
-            end--;
-        }
-        int cleanLen = end + 1;
-        if (cleanLen == 0) {
-            java.util.Arrays.fill(ints, 0);
-            return false;
-        }
-
-        int[] productClean = pad.productClean;
-        java.util.Arrays.fill(productClean, 0);
-        System.arraycopy(product, 0, productClean, 0, cleanLen);
-
-        int[] tempRes = pad.c;
-        java.util.Arrays.fill(tempRes, 0);
-        System.arraycopy(productClean, 0, tempRes, 0, cleanLen);
+        mMultiply(tempRes, tempMul);
 
         mModInPlace(tempRes, mod);
 
         java.util.Arrays.fill(ints, 0);
-        int copyLen = Math.min(tempRes.length, ints.length);
-        System.arraycopy(tempRes, 0, ints, 0, copyLen);
+        System.arraycopy(tempRes, 0, ints, 0, ints.length);
         return false;
     }
 
-    static void mul(
-            final int[] a, final int alen, final int[] b, final int blen, final int[] out) {
 
-        final int outlen = alen + blen;
-        java.util.Arrays.fill(out, 0, outlen, 0);
-
-        for (int i = 0; i < alen; i++) {
-            long aVal = a[i] & LONG;
-            if (aVal == 0) continue;
-            long carry = 0;
-            for (int j = 0; j < blen; j++) {
-                int targetIdx = i + j;
-                long prod = aVal * (b[j] & LONG) + (out[targetIdx] & LONG) + carry;
-                out[targetIdx] = (int) prod;
-                carry = prod >>> 32;
-            }
-            out[i + blen] = (int) carry;
-        }
-    }
 
     // immutable addition modulo: copies the first operand to target width and applies mutable mAddMod
     static int[] addmod(final int[] a, final int[] b, final int[] c) {
@@ -980,7 +955,6 @@ final class Arrays {
         Scratchpad pad = SCRATCH.get();
         int[] base = pad.a;
         int[] result = pad.b;
-        int[] prod = pad.product;
 
         java.util.Arrays.fill(base, 0);
         java.util.Arrays.fill(result, 0);
@@ -993,33 +967,36 @@ final class Arrays {
         int e = exp;
         while (e > 0) {
             if ((e & 1) == 1) {
+                java.util.Arrays.fill(pad.c, 0);
                 System.arraycopy(result, 0, pad.c, 0, len);
+
+                java.util.Arrays.fill(pad.d, 0);
                 System.arraycopy(base, 0, pad.d, 0, len);
 
-                mul(pad.c, len, pad.d, len, prod);
+                mMultiply(pad.c, pad.d);
 
-                for (int i = len; i < 2 * len; i++) {
-                    if (prod[i] != 0) {
+                for (int i = len; i < pad.c.length; i++) {
+                    if (pad.c[i] != 0) {
                         overflow = true;
                         break;
                     }
                 }
-                System.arraycopy(prod, 0, result, 0, len);
+                System.arraycopy(pad.c, 0, result, 0, len);
             }
             e >>>= 1;
             if (e > 0) {
+                java.util.Arrays.fill(pad.c, 0);
                 System.arraycopy(base, 0, pad.c, 0, len);
-                System.arraycopy(base, 0, pad.d, 0, len);
 
-                mul(pad.c, len, pad.d, len, prod);
+                mMultiply(pad.c, pad.c);
 
-                for (int i = len; i < 2 * len; i++) {
-                    if (prod[i] != 0) {
+                for (int i = len; i < pad.c.length; i++) {
+                    if (pad.c[i] != 0) {
                         overflow = true;
                         break;
                     }
                 }
-                System.arraycopy(prod, 0, base, 0, len);
+                System.arraycopy(pad.c, 0, base, 0, len);
             }
         }
 
