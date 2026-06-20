@@ -179,7 +179,7 @@ public final class UInt256 extends UInt<UInt256> {
       return ZERO;
     }
     boolean[] overflow = new boolean[1];
-    int[] res = Arrays.multiply(ints, other.ints, MAX_WIDTH, overflow);
+    int[] res = Arrays.multiply(ints, other.ints, overflow);
     return new UInt256(res, overflow[0]);
   }
 

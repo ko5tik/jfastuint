@@ -178,7 +178,7 @@ public final class UInt128 extends UInt<UInt128> {
       return ZERO;
 
     boolean[] overflow = new boolean[1];
-    int[] res = Arrays.multiply(ints, other.ints, MAX_WIDTH, overflow);
+    int[] res = Arrays.multiply(ints, other.ints, overflow);
     return new UInt128(res, overflow[0]);
   }
 

@@ -478,48 +478,14 @@ final class Arrays {
         return overflow;
     }
 
-    static int[] multiply(int[] a, int[] b, final int maxWidth) {
-        return multiply(a, b, maxWidth, new boolean[1]);
+    static int[] multiply(int[] a, int[] b) {
+        return multiply(a, b, new boolean[1]);
     }
 
-    static int[] multiply(int[] a, int[] b, final int maxWidth, boolean[] overflowHolder) {
-        int alen = Math.min(a.length, maxWidth);
-        int blen = Math.min(b.length, maxWidth);
-
-        Scratchpad pad = SCRATCH.get();
-        int[] product = pad.product;
-
-        mul(a, alen, b, blen, product);
-
-        boolean overflow = false;
-        if (a.length > maxWidth) {
-            for (int i = maxWidth; i < a.length; i++) {
-                if (a[i] != 0) {
-                    overflow = true;
-                    break;
-                }
-            }
-        }
-        if (b.length > maxWidth) {
-            for (int i = maxWidth; i < b.length; i++) {
-                if (b[i] != 0) {
-                    overflow = true;
-                    break;
-                }
-            }
-        }
-
-        for (int i = maxWidth; i < alen + blen; i++) {
-            if (product[i] != 0) {
-                overflow = true;
-                break;
-            }
-        }
-
-        int[] res = new int[maxWidth];
-        System.arraycopy(product, 0, res, 0, maxWidth);
-        overflowHolder[0] = overflow;
-        return res;
+    static int[] multiply(int[] a, int[] b, boolean[] overflowHolder) {
+        int[] out = copyOf(a, a.length);
+        overflowHolder[0] = mMultiply(out, b);
+        return out;
     }
 
     static boolean mMultiply(final int[] ints, final int[] other) {
@@ -562,7 +528,7 @@ final class Arrays {
         if (b.length == 0) {
             return new int[c.length];
         }
-        final int[] mul = multiply(a, b, a.length + b.length);
+        final int[] mul = multiply(copyOf(a, a.length + b.length), b);
         final int cmp = compareActive(mul, c);
         int[] res = (cmp < 0 ? mul : (cmp == 0 ? ZERO : mod(mul, c)));
         if (res.length == c.length) {
@@ -735,11 +701,13 @@ final class Arrays {
     }
 
     static int[] square(final int[] a, final int maxWidth, boolean[] overflowHolder) {
-        return multiply(a, a, maxWidth, overflowHolder);
+        int[] padded = copyOf(a, maxWidth);
+        return multiply(padded, padded, overflowHolder);
     }
 
     static int[] square(final int[] a, final int maxWidth) {
-        return multiply(a, a, maxWidth);
+        int[] padded = copyOf(a, maxWidth);
+        return multiply(padded, padded);
     }
 
     static int[] pow(int[] a, final int lo, int exp, final int maxWidth) {
@@ -806,7 +774,7 @@ final class Arrays {
 
         while (exp != 0) {
             if ((exp & 1) == 1) {
-                out = multiply(out, a, maxWidth, stepOverflow);
+                out = multiply(copyOf(out, maxWidth), a, stepOverflow);
                 if (stepOverflow[0]) {
                     overflow = true;
                 }
