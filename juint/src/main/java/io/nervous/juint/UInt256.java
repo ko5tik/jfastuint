@@ -170,7 +170,7 @@ public final class UInt256 extends UInt<UInt256> {
     return (cmp == 0 ? ZERO :
             new UInt256(
               cmp < 0 ?
-              Arrays.subgt(ints, other.ints, MAX_VALUE.ints) :
+              Arrays.subgt(ints, other.ints) :
               Arrays.sub  (ints, other.ints), false));
   }
 

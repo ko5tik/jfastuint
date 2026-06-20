@@ -169,7 +169,7 @@ public final class UInt128 extends UInt<UInt128> {
     return (cmp == 0 ? ZERO :
             new UInt128(
               cmp < 0 ?
-              Arrays.subgt(ints, other.ints, MAX_VALUE.ints) :
+              Arrays.subgt(ints, other.ints) :
               Arrays.sub  (ints, other.ints), false));
   }
 

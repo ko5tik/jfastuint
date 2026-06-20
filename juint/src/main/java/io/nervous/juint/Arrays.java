@@ -375,60 +375,107 @@ final class Arrays {
         return borrow != 0;
     }
 
-    static int[] add(int[] longer, int[] shorter, final int maxWidth) {
-        if (longer.length < shorter.length) {
-            int[] tmp = longer;
-            longer = shorter;
-            shorter = tmp;
+    // immutable addition: copies the longer operand to target width and applies mutable mAdd
+    static int[] add(int[] a, int[] b, final int maxWidth) {
+        if (a.length < b.length) {
+            int[] tmp = a;
+            a = b;
+            b = tmp;
         }
-        int targetWidth = maxWidth == -1 ? longer.length : maxWidth;
-        final int[] out = new int[targetWidth];
+        int targetWidth = maxWidth == -1 ? a.length : maxWidth;
+        int[] out = copyOf(a, targetWidth);
+        boolean carry = mAdd(out, b);
         
-        int llen = longer.length;
-        int slen = shorter.length;
-        long sum = 0;
-
-        for (int i = 0; i < targetWidth; i++) {
-            long aVal = i < llen ? (longer[i] & LONG) : 0L;
-            long bVal = i < slen ? (shorter[i] & LONG) : 0L;
-            sum = aVal + bVal + (sum >>> 32);
-            out[i] = (int) sum;
-        }
-
-        if (maxWidth == -1 && (sum >>> 32) != 0) {
+        if (maxWidth == -1 && carry) {
             int[] grown = new int[targetWidth + 1];
             System.arraycopy(out, 0, grown, 0, targetWidth);
             grown[targetWidth] = 1;
             return grown;
         }
-
         return out;
     }
 
-    static int[] subgt(final int[] a, final int[] b, final int[] maxValue) {
-        if (a.length == 0) {
-            return inc(not(b), maxValue.length);
+    // in-place addition mutating 'ints'
+    static boolean mAdd(final int[] ints, final int[] other) {
+        long carry = 0;
+        int len = ints.length;
+        int otherLen = other.length;
+        for (int i = 0; i < len; i++) {
+            long aVal = ints[i] & LONG;
+            long bVal = i < otherLen ? (other[i] & LONG) : 0L;
+            long sum = aVal + bVal + carry;
+            ints[i] = (int) sum;
+            carry = sum >>> 32;
         }
-        return inc(not(sub(b, a)), maxValue.length);
-    }
-
-    static int[] sub(final int[] a, final int[] b) {
-        int alen = a.length, blen = b.length;
-        final int[] out = copyOf(a, alen);
-        long diff = 0;
-
-        for (int i = 0; i < blen; i++) {
-            diff = (out[i] & LONG) - (b[i] & LONG) + (diff >> 32);
-            out[i] = (int) diff;
-        }
-
-        if (diff >> 32 != 0) {
-            for (int i = blen; i < alen && --(out[i]) == -1; i++) {
-                ;
+        boolean overflow = carry != 0;
+        if (!overflow && otherLen > len) {
+            for (int i = len; i < otherLen; i++) {
+                if (other[i] != 0) {
+                    overflow = true;
+                    break;
+                }
             }
         }
+        return overflow;
+    }
 
+    // immutable subgt: copies the first operand and applies mutable mSubgt
+    static int[] subgt(final int[] a, final int[] b) {
+        int[] out = copyOf(a, a.length);
+        mSubgt(out, b);
         return out;
+    }
+
+    // in-place subgt mutating 'ints'
+    static boolean mSubgt(final int[] ints, final int[] other) {
+        Scratchpad pad = SCRATCH.get();
+        int[] temp = pad.a;
+        java.util.Arrays.fill(temp, 0);
+
+        if (ints.length == 0) {
+            System.arraycopy(other, 0, temp, 0, Math.min(other.length, temp.length));
+            mNot(temp);
+            mInc(temp);
+        } else {
+            System.arraycopy(other, 0, temp, 0, Math.min(other.length, temp.length));
+            mSubtract(temp, ints);
+            mNot(temp);
+            mInc(temp);
+        }
+
+        System.arraycopy(temp, 0, ints, 0, ints.length);
+        return true;
+    }
+
+    // immutable subtraction: copies the first operand and applies mutable mSubtract
+    static int[] sub(final int[] a, final int[] b) {
+        int[] out = copyOf(a, a.length);
+        mSubtract(out, b);
+        return out;
+    }
+
+    // in-place subtraction mutating 'ints'
+    static boolean mSubtract(final int[] ints, final int[] other) {
+        long borrow = 0;
+        int len = ints.length;
+        int otherLen = other.length;
+        for (int i = 0; i < len; i++) {
+            long aVal = ints[i] & LONG;
+            long bVal = i < otherLen ? (other[i] & LONG) : 0L;
+            long diff = aVal - bVal - borrow;
+            ints[i] = (int) diff;
+            borrow = (diff >> 32) != 0 ? 1 : 0;
+        }
+        boolean overflow = borrow != 0;
+        if (!overflow && otherLen > len) {
+            for (int i = len; i < otherLen; i++) {
+                if (other[i] != 0) {
+                    overflow = true;
+                    break;
+                }
+            }
+        }
+        return overflow;
     }
 
     static int[] mulmod(int[] a, int[] b, final int[] c) {
@@ -915,51 +962,9 @@ final class Arrays {
 
 
 
-    static boolean mAdd(final int[] ints, final int[] other) {
-        long carry = 0;
-        int len = ints.length;
-        int otherLen = other.length;
-        for (int i = 0; i < len; i++) {
-            long aVal = ints[i] & LONG;
-            long bVal = i < otherLen ? (other[i] & LONG) : 0L;
-            long sum = aVal + bVal + carry;
-            ints[i] = (int) sum;
-            carry = sum >>> 32;
-        }
-        boolean overflow = carry != 0;
-        if (!overflow && otherLen > len) {
-            for (int i = len; i < otherLen; i++) {
-                if (other[i] != 0) {
-                    overflow = true;
-                    break;
-                }
-            }
-        }
-        return overflow;
-    }
 
-    static boolean mSubtract(final int[] ints, final int[] other) {
-        long borrow = 0;
-        int len = ints.length;
-        int otherLen = other.length;
-        for (int i = 0; i < len; i++) {
-            long aVal = ints[i] & LONG;
-            long bVal = i < otherLen ? (other[i] & LONG) : 0L;
-            long diff = aVal - bVal - borrow;
-            ints[i] = (int) diff;
-            borrow = (diff >> 32) != 0 ? 1 : 0;
-        }
-        boolean overflow = borrow != 0;
-        if (!overflow && otherLen > len) {
-            for (int i = len; i < otherLen; i++) {
-                if (other[i] != 0) {
-                    overflow = true;
-                    break;
-                }
-            }
-        }
-        return overflow;
-    }
+
+
 
     static boolean mMultiply(final int[] ints, final int[] other) {
         boolean[] overflowHolder = new boolean[1];
