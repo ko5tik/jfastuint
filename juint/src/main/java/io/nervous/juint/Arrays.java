@@ -234,58 +234,108 @@ final class Arrays {
         return false;
     }
 
+    // immutable lshift: copies the operand to target width and applies mutable mShiftLeft
     static int[] lshift(final int[] a, final int n, final int maxWidth) {
         int targetWidth = maxWidth == -1 ? a.length + (n >>> 5) + ((n & 0x1f) != 0 ? 1 : 0) : maxWidth;
-        final int[] out = new int[targetWidth];
-        final int wordShift = n >>> 5;
-        if (wordShift >= targetWidth) {
-            return out;
-        }
-        final int alen = a.length;
-        final int bitShift = n & 0x1f;
-        if (bitShift == 0) {
-            for (int i = wordShift; i < targetWidth; i++) {
-                int aIdx = i - wordShift;
-                out[i] = (aIdx < alen) ? a[aIdx] : 0;
-            }
-        } else {
-            final int invShift = 32 - bitShift;
-            for (int i = wordShift; i < targetWidth; i++) {
-                int aIdx1 = i - wordShift;
-                int aIdx2 = i - wordShift - 1;
-                int val1 = (aIdx1 < alen) ? a[aIdx1] : 0;
-                int val2 = (aIdx2 >= 0 && aIdx2 < alen) ? a[aIdx2] : 0;
-                out[i] = (val1 << bitShift) | (val2 >>> invShift);
-            }
-        }
+        int[] out = copyOf(a, targetWidth);
+        mShiftLeft(out, n);
         return out;
     }
 
-    static int[] rshift(final int[] a, final int n, final int maxWidth) {
-        int targetWidth = maxWidth == -1 ? a.length : maxWidth;
-        final int[] out = new int[targetWidth];
-        final int wordShift = n >>> 5;
-        if (wordShift >= a.length) {
-            return out;
+    // in-place lshift mutating 'ints'
+    static boolean mShiftLeft(final int[] ints, final int places) {
+        if (places < 0) {
+            return mShiftRight(ints, -places);
         }
-        final int alen = a.length;
-        final int bitShift = n & 0x1f;
-        if (bitShift == 0) {
-            for (int i = 0; i < targetWidth; i++) {
-                int aIdx = i + wordShift;
-                out[i] = (aIdx < alen) ? a[aIdx] : 0;
+        if (places == 0) {
+            return false;
+        }
+        int len = ints.length;
+        if (places >= len * 32) {
+            boolean overflow = !isZero(ints);
+            java.util.Arrays.fill(ints, 0);
+            return overflow;
+        }
+        int words = places >>> 5;
+        int bits = places & 31;
+        boolean overflow = false;
+        if (words > 0) {
+            for (int i = len - words; i < len; i++) {
+                if (ints[i] != 0) {
+                    overflow = true;
+                }
+            }
+        }
+        if (bits > 0 && words < len && (ints[len - 1 - words] >>> (32 - bits)) != 0) {
+            overflow = true;
+        }
+        if (bits == 0) {
+            for (int i = len - 1; i >= words; i--) {
+                ints[i] = ints[i - words];
             }
         } else {
-            final int invShift = 32 - bitShift;
-            for (int i = 0; i < targetWidth; i++) {
-                int aIdx1 = i + wordShift;
-                int aIdx2 = i + wordShift + 1;
-                int val1 = (aIdx1 < alen) ? a[aIdx1] : 0;
-                int val2 = (aIdx2 < alen) ? a[aIdx2] : 0;
-                out[i] = (val1 >>> bitShift) | (val2 << invShift);
+            final int invShift = 32 - bits;
+            for (int i = len - 1; i > words; i--) {
+                ints[i] = (ints[i - words] << bits) | (ints[i - words - 1] >>> invShift);
+            }
+            ints[words] = ints[0] << bits;
+        }
+        for (int i = 0; i < words; i++) {
+            ints[i] = 0;
+        }
+        return overflow;
+    }
+
+    // immutable rshift: copies the operand to target width and applies mutable mShiftRight
+    static int[] rshift(final int[] a, final int n, final int maxWidth) {
+        int targetWidth = maxWidth == -1 ? a.length : maxWidth;
+        int[] out = copyOf(a, targetWidth);
+        mShiftRight(out, n);
+        return out;
+    }
+
+    // in-place rshift mutating 'ints'
+    static boolean mShiftRight(final int[] ints, final int places) {
+        if (places < 0) {
+            return mShiftLeft(ints, -places);
+        }
+        if (places == 0) {
+            return false;
+        }
+        int len = ints.length;
+        if (places >= len * 32) {
+            boolean overflow = !isZero(ints);
+            java.util.Arrays.fill(ints, 0);
+            return overflow;
+        }
+        int words = places >>> 5;
+        int bits = places & 31;
+        boolean overflow = false;
+        if (words > 0) {
+            for (int i = 0; i < words; i++) {
+                if (ints[i] != 0) {
+                    overflow = true;
+                }
             }
         }
-        return out;
+        if (bits > 0 && words < len && (ints[words] & ((1 << bits) - 1)) != 0) {
+            overflow = true;
+        }
+        if (bits == 0) {
+            for (int i = 0; i < len - words; i++) {
+                ints[i] = ints[i + words];
+            }
+        } else {
+            final int invShift = 32 - bits;
+            for (int i = 0; i < len - words - 1; i++) {
+                ints[i] = (ints[i + words] >>> bits) | (ints[i + words + 1] << invShift);
+            }
+            ints[len - 1 - words] = ints[len - 1] >>> bits;
+        }
+        for (int i = len - words; i < len; i++) {
+            ints[i] = 0;
+        }
+        return overflow;
     }
 
     static int[] inc(final int[] a, final int maxWidth) {
@@ -860,91 +910,7 @@ final class Arrays {
 
 
 
-    static boolean mShiftLeft(final int[] ints, final int places) {
-        if (places < 0) {
-            return mShiftRight(ints, -places);
-        }
-        if (places == 0) {
-            return false;
-        }
-        int len = ints.length;
-        if (places >= len * 32) {
-            boolean overflow = !isZero(ints);
-            java.util.Arrays.fill(ints, 0);
-            return overflow;
-        }
-        int words = places >>> 5;
-        int bits = places & 31;
-        boolean overflow = false;
-        if (words > 0) {
-            for (int i = len - words; i < len; i++) {
-                if (ints[i] != 0) {
-                    overflow = true;
-                }
-            }
-        }
-        if (bits > 0 && words < len && (ints[len - 1 - words] >>> (32 - bits)) != 0) {
-            overflow = true;
-        }
-        if (bits == 0) {
-            for (int i = len - 1; i >= words; i--) {
-                ints[i] = ints[i - words];
-            }
-        } else {
-            final int invShift = 32 - bits;
-            for (int i = len - 1; i > words; i--) {
-                ints[i] = (ints[i - words] << bits) | (ints[i - words - 1] >>> invShift);
-            }
-            ints[words] = ints[0] << bits;
-        }
-        for (int i = 0; i < words; i++) {
-            ints[i] = 0;
-        }
-        return overflow;
-    }
 
-    static boolean mShiftRight(final int[] ints, final int places) {
-        if (places < 0) {
-            return mShiftLeft(ints, -places);
-        }
-        if (places == 0) {
-            return false;
-        }
-        int len = ints.length;
-        if (places >= len * 32) {
-            boolean overflow = !isZero(ints);
-            java.util.Arrays.fill(ints, 0);
-            return overflow;
-        }
-        int words = places >>> 5;
-        int bits = places & 31;
-        boolean overflow = false;
-        if (words > 0) {
-            for (int i = 0; i < words; i++) {
-                if (ints[i] != 0) {
-                    overflow = true;
-                }
-            }
-        }
-        if (bits > 0 && words < len && (ints[words] & ((1 << bits) - 1)) != 0) {
-            overflow = true;
-        }
-        if (bits == 0) {
-            for (int i = 0; i < len - words; i++) {
-                ints[i] = ints[i + words];
-            }
-        } else {
-            final int invShift = 32 - bits;
-            for (int i = 0; i < len - words - 1; i++) {
-                ints[i] = (ints[i + words] >>> bits) | (ints[i + words + 1] << invShift);
-            }
-            ints[len - 1 - words] = ints[len - 1] >>> bits;
-        }
-        for (int i = len - words; i < len; i++) {
-            ints[i] = 0;
-        }
-        return overflow;
-    }
 
     static boolean mInc(final int[] ints) {
         long carry = 1;
