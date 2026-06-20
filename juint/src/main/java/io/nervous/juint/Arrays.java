@@ -499,22 +499,27 @@ final class Arrays {
         return padded;
     }
 
-    static int[] addmod(int[] a, int[] b, final int[] c) {
-        if (a.length < b.length) {
-            int[] tmp = a;
-            a = b;
-            b = tmp;
+    // immutable addition modulo: copies the first operand to target width and applies mutable mAddMod
+    static int[] addmod(final int[] a, final int[] b, final int[] c) {
+        int[] out = copyOf(a, c.length);
+        mAddMod(out, b, c);
+        return out;
+    }
+
+    // in-place addition modulo mutating 'ints'
+    static boolean mAddMod(final int[] ints, final int[] add, final int[] mod) {
+        if (isZero(mod)) throw new ArithmeticException("modulo by zero");
+
+        mModInPlace(ints, mod);
+
+        int[] tempAdd = copyOf(add, ints.length);
+        mModInPlace(tempAdd, mod);
+
+        boolean carry = mAdd(ints, tempAdd);
+        if (carry || compareActive(ints, mod) >= 0) {
+            mSubtract(ints, mod);
         }
-        final int[] add = b.length == 0 ? a : add(a, b, -1);
-        final int cmp = compareActive(add, c);
-        int[] res = (cmp < 0 ? add : (cmp == 0 ? ZERO : mod(add, c)));
-        if (res.length == c.length) {
-            return res;
-        }
-        int[] padded = new int[c.length];
-        int len = Math.min(res.length, c.length);
-        System.arraycopy(res, 0, padded, 0, len);
-        return padded;
+        return false;
     }
 
     static int[] multiply(int[] a, int[] b, final int maxWidth) {
@@ -973,23 +978,7 @@ final class Arrays {
         return overflowHolder[0];
     }
 
-    static boolean mAddMod(final int[] ints, final int[] add, final int[] mod) {
-        if (isZero(mod)) throw new ArithmeticException("modulo by zero");
 
-        mModInPlace(ints, mod);
-
-        Scratchpad pad = SCRATCH.get();
-        int[] tempAdd = pad.tempAdd;
-        java.util.Arrays.fill(tempAdd, 0);
-        System.arraycopy(add, 0, tempAdd, 0, add.length);
-        mModInPlace(tempAdd, mod);
-
-        boolean carry = mAdd(ints, tempAdd);
-        if (carry || compareActive(ints, mod) >= 0) {
-            mSubtract(ints, mod);
-        }
-        return false;
-    }
 
     static boolean mMulMod(final int[] ints, final int[] mul, final int[] mod) {
         if (isZero(mod)) throw new ArithmeticException("modulo by zero");
