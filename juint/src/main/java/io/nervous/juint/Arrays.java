@@ -468,22 +468,10 @@ final class Arrays {
     }
 
     // immutable addition: copies the longer operand to target width and applies mutable mAdd
-    static int[] add(int[] a, int[] b, final int maxWidth) {
-        if (a.length < b.length) {
-            int[] tmp = a;
-            a = b;
-            b = tmp;
-        }
+    static int[] add(final int[] a, final int[] b, final int maxWidth) {
         int targetWidth = maxWidth == -1 ? a.length : maxWidth;
         int[] out = copyOf(a, targetWidth);
-        boolean carry = mAdd(out, b);
-        
-        if (maxWidth == -1 && carry) {
-            int[] grown = new int[targetWidth + 1];
-            System.arraycopy(out, 0, grown, 0, targetWidth);
-            grown[targetWidth] = 1;
-            return grown;
-        }
+        mAdd(out, b);
         return out;
     }
 
@@ -647,29 +635,9 @@ final class Arrays {
     // =========================================================================
 
     static int[] divide(final int[] a, final int[] b) {
-        final int[] cleanA = stripLeadingZeroes(a);
-        final int[] cleanB = stripLeadingZeroes(b);
-        final int[] q;
-
-        switch (cleanB.length) {
-            case 1:
-                q = Division.div(cleanA, cleanB[0])[0];
-                break;
-            case 2:
-                final long divisor = ((cleanB[1] & LONG) << 32) | (cleanB[0] & LONG);
-                q = Division.div(cleanA, divisor)[0];
-                break;
-            default:
-                q = Division.div(cleanA, cleanB)[0];
-        }
-
-        if (q.length == a.length) {
-            return q;
-        }
-        int[] padded = new int[a.length];
-        int len = Math.min(q.length, a.length);
-        System.arraycopy(q, 0, padded, 0, len);
-        return padded;
+        int[] out = copyOf(a, a.length);
+        mDivide(out, b);
+        return out;
     }
 
     static boolean mDivide(final int[] ints, final int[] other) {
@@ -727,29 +695,9 @@ final class Arrays {
     }
 
     static int[] mod(final int[] a, final int[] b) {
-        final int[] cleanA = stripLeadingZeroes(a);
-        final int[] cleanB = stripLeadingZeroes(b);
-        final int[] r;
-
-        switch (cleanB.length) {
-            case 1:
-                r = Division.div(cleanA, cleanB[0])[1];
-                break;
-            case 2:
-                final long divisor = ((cleanB[1] & LONG) << 32) | (cleanB[0] & LONG);
-                r = Division.div(cleanA, divisor)[1];
-                break;
-            default:
-                r = Division.div(cleanA, cleanB)[1];
-        }
-
-        if (r.length == a.length) {
-            return r;
-        }
-        int[] padded = new int[a.length];
-        int len = Math.min(r.length, a.length);
-        System.arraycopy(r, 0, padded, 0, len);
-        return padded;
+        int[] out = copyOf(a, a.length);
+        mMod(out, b);
+        return out;
     }
 
     static boolean mMod(final int[] ints, final int[] other) {
