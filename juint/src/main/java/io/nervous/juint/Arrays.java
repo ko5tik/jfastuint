@@ -338,40 +338,41 @@ final class Arrays {
         return overflow;
     }
 
+    // immutable inc: copies the operand to target width and applies mutable mInc
     static int[] inc(final int[] a, final int maxWidth) {
-        return inc(a, false, maxWidth);
+        int targetWidth = maxWidth == -1 ? a.length : maxWidth;
+        int[] out = copyOf(a, targetWidth);
+        mInc(out);
+        return out;
     }
 
-    static int[] inc(final int[] a, final boolean mutate, final int maxWidth) {
-        final int len = a.length;
-        final int targetWidth = maxWidth == -1 ? len : maxWidth;
-        final int[] b;
-        if (len == targetWidth) {
-            b = mutate ? a : copyOf(a, len);
-        } else {
-            b = new int[targetWidth];
-            System.arraycopy(a, 0, b, 0, len);
+    // in-place inc mutating 'ints'
+    static boolean mInc(final int[] ints) {
+        long carry = 1;
+        for (int i = 0; i < ints.length && carry != 0; i++) {
+            long sum = (ints[i] & LONG) + carry;
+            ints[i] = (int) sum;
+            carry = sum >>> 32;
         }
-
-        int last = 0;
-        while (last < targetWidth) {
-            if (++(b[last++]) != 0) {
-                return b;
-            }
-        }
-        return b;
+        return carry != 0;
     }
 
+    // immutable dec: copies the operand and applies mutable mDec
     static int[] dec(final int[] a) {
-        final int len = a.length;
-        final int[] b = copyOf(a, len);
-        int last = 0;
-        while (last < len) {
-            if (--(b[last++]) != -1) {
-                break;
-            }
+        int[] out = copyOf(a, a.length);
+        mDec(out);
+        return out;
+    }
+
+    // in-place dec mutating 'ints'
+    static boolean mDec(final int[] ints) {
+        long borrow = 1;
+        for (int i = 0; i < ints.length && borrow != 0; i++) {
+            long diff = (ints[i] & LONG) - borrow;
+            ints[i] = (int) diff;
+            borrow = (diff >> 32) != 0 ? 1 : 0;
         }
-        return b;
+        return borrow != 0;
     }
 
     static int[] add(int[] longer, int[] shorter, final int maxWidth) {
@@ -406,9 +407,9 @@ final class Arrays {
 
     static int[] subgt(final int[] a, final int[] b, final int[] maxValue) {
         if (a.length == 0) {
-            return inc(not(b), true, maxValue.length);
+            return inc(not(b), maxValue.length);
         }
-        return inc(not(sub(b, a)), true, maxValue.length);
+        return inc(not(sub(b, a)), maxValue.length);
     }
 
     static int[] sub(final int[] a, final int[] b) {
@@ -912,25 +913,7 @@ final class Arrays {
 
 
 
-    static boolean mInc(final int[] ints) {
-        long carry = 1;
-        for (int i = 0; i < ints.length && carry != 0; i++) {
-            long sum = (ints[i] & LONG) + carry;
-            ints[i] = (int) sum;
-            carry = sum >>> 32;
-        }
-        return carry != 0;
-    }
 
-    static boolean mDec(final int[] ints) {
-        long borrow = 1;
-        for (int i = 0; i < ints.length && borrow != 0; i++) {
-            long diff = (ints[i] & LONG) - borrow;
-            ints[i] = (int) diff;
-            borrow = (diff >> 32) != 0 ? 1 : 0;
-        }
-        return borrow != 0;
-    }
 
     static boolean mAdd(final int[] ints, final int[] other) {
         long carry = 0;
