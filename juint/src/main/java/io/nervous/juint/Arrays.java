@@ -9,6 +9,11 @@ import static java.util.Arrays.copyOf;
  * These methods don't mutate their arguments or return arrays w/ leading zeroes.
  */
 final class Arrays {
+
+    // =========================================================================
+    // Constants, Initialization & Scratchpad
+    // =========================================================================
+
     static final long LONG = 0xffffffffL;
     static final int MAX_CACHE = 28;
     static final int[][] CACHE = new int[MAX_CACHE][1];
@@ -23,6 +28,8 @@ final class Arrays {
     static final int[] ZERO = CACHE[0];
     static final int[] ONE = CACHE[1];
     static final int[] TWO = CACHE[2];
+
+    private static BigInteger BIG_INT = BigInteger.valueOf(LONG);
 
     static final class Scratchpad {
         final int[] a = new int[128];
@@ -40,6 +47,10 @@ final class Arrays {
 
     static final ThreadLocal<Scratchpad> SCRATCH = ThreadLocal.withInitial(Scratchpad::new);
 
+    // =========================================================================
+    // Basic Helpers & Conversions
+    // =========================================================================
+
     static int[] valueOf(final long v) {
         if (0 <= v && v < MAX_CACHE) {
             return CACHE[(int) v];
@@ -48,6 +59,94 @@ final class Arrays {
         final int hi = (int) (v >>> 32);
         return hi == 0 ? new int[]{(int) v} : new int[]{(int) v, hi};
     }
+
+    static int[] from(BigInteger b, final int maxWidth) {
+        int n = Math.min((b.bitLength() >>> 5) + 1, maxWidth);
+        final int[] ints = new int[n];
+        for (int i = 0; i < n; i++) {
+            ints[i] = b.and(BIG_INT).intValue();
+            b = b.shiftRight(32);
+        }
+        return (0 < ints.length && ints[ints.length - 1] == 0) ? stripLeadingZeroes(ints) : ints;
+    }
+
+    static int[] from(final byte[] bytes, final int[] maxValue) {
+        int len = bytes.length;
+
+        if (len == 0) {
+            return ZERO;
+        }
+
+        int skip;
+        for (skip = 0; skip < len && bytes[skip] == 0; skip++)
+            ;
+
+        final int ints = Math.min(maxValue.length, ((len - skip) + 3) >>> 2);
+        final int[] out = new int[ints];
+        int b = len - 1;
+        for (int i = 0; i < ints; i++) {
+            out[i] = bytes[b--] & 0xff;
+            int copy = Math.min(3, b - skip + 1);
+            for (int j = 8; j <= (copy << 3); j += 8)
+                out[i] |= ((bytes[b--] & 0xff) << j);
+        }
+        return out;
+    }
+
+    static BigInteger toBigInteger(final int[] ints) {
+        BigInteger out = BigInteger.ZERO;
+        for (int i = ints.length - 1; i >= 0; i--) {
+            out = out.shiftLeft(32).or(BigInteger.valueOf(ints[i] & LONG));
+        }
+        return out;
+    }
+
+    static int[] maxValue(final int maxWidth) {
+        final int[] max = new int[maxWidth];
+        java.util.Arrays.fill(max, -1);
+        return max;
+    }
+
+    static boolean isZero(final int[] ints) {
+        for (int val : ints) {
+            if (val != 0) return false;
+        }
+        return true;
+    }
+
+    static int bitLength(int a[]) {
+        int firstNonZero = a.length - 1;
+        while (firstNonZero >= 0 && a[firstNonZero] == 0) {
+            firstNonZero--;
+        }
+        if (firstNonZero < 0) return 0;
+        return (firstNonZero * 32) + (32 - Integer.numberOfLeadingZeros(a[firstNonZero]));
+    }
+
+    static int[] stripLeadingZeroes(final int[] ints, int strip) {
+        int end = ints.length;
+        while (end > strip && ints[end - 1] == 0) {
+            end--;
+        }
+        return end == ints.length ? ints : copyOfRange(ints, 0, end);
+    }
+
+    static int[] stripLeadingZeroes(final int[] ints) {
+        return stripLeadingZeroes(ints, 0);
+    }
+
+    static byte[] stripLeadingZeroes(final byte[] bs) {
+        int strip;
+        final int len = bs.length;
+
+        for (strip = 0; strip < len && bs[strip] == 0; strip++)
+            ;
+        return strip == 0 ? bs : copyOfRange(bs, strip, len);
+    }
+
+    // =========================================================================
+    // Comparisons
+    // =========================================================================
 
     static int compare(final int[] ints, final int[] other) {
         final int len = ints.length;
@@ -104,26 +203,10 @@ final class Arrays {
         return compareActive(ints, from(other, maxWidth));
     }
 
-    static int[] stripLeadingZeroes(final int[] ints, int strip) {
-        int end = ints.length;
-        while (end > strip && ints[end - 1] == 0) {
-            end--;
-        }
-        return end == ints.length ? ints : copyOfRange(ints, 0, end);
-    }
+    // =========================================================================
+    // Logical & Bitwise Operations
+    // =========================================================================
 
-    static int[] stripLeadingZeroes(final int[] ints) {
-        return stripLeadingZeroes(ints, 0);
-    }
-
-    static byte[] stripLeadingZeroes(final byte[] bs) {
-        int strip;
-        final int len = bs.length;
-
-        for (strip = 0; strip < len && bs[strip] == 0; strip++)
-            ;
-        return strip == 0 ? bs : copyOfRange(bs, strip, len);
-    }
     // immutable version of not
     static int[] not(final int[] ints) {
         int[] out = copyOf(ints, ints.length);
@@ -138,6 +221,7 @@ final class Arrays {
         }
         return false;
     }
+
     // immutable bitwise and: copies the first operand and applies mutable mAnd
     static int[] and(final int[] a, final int[] b) {
         int[] out = copyOf(a, a.length);
@@ -233,6 +317,10 @@ final class Arrays {
         ints[bit >>> 5] ^= (1 << (bit & 31));
         return false;
     }
+
+    // =========================================================================
+    // Bit Shifts
+    // =========================================================================
 
     // immutable lshift: copies the operand to target width and applies mutable mShiftLeft
     static int[] lshift(final int[] a, final int n, final int maxWidth) {
@@ -338,6 +426,10 @@ final class Arrays {
         return overflow;
     }
 
+    // =========================================================================
+    // Basic Arithmetic Operations
+    // =========================================================================
+
     // immutable inc: copies the operand to target width and applies mutable mInc
     static int[] inc(final int[] a, final int maxWidth) {
         int targetWidth = maxWidth == -1 ? a.length : maxWidth;
@@ -419,34 +511,6 @@ final class Arrays {
         return overflow;
     }
 
-    // immutable subgt: copies the first operand and applies mutable mSubgt
-    static int[] subgt(final int[] a, final int[] b) {
-        int[] out = copyOf(a, a.length);
-        mSubgt(out, b);
-        return out;
-    }
-
-    // in-place subgt mutating 'ints'
-    static boolean mSubgt(final int[] ints, final int[] other) {
-        Scratchpad pad = SCRATCH.get();
-        int[] temp = pad.a;
-        java.util.Arrays.fill(temp, 0);
-
-        if (ints.length == 0) {
-            System.arraycopy(other, 0, temp, 0, Math.min(other.length, temp.length));
-            mNot(temp);
-            mInc(temp);
-        } else {
-            System.arraycopy(other, 0, temp, 0, Math.min(other.length, temp.length));
-            mSubtract(temp, ints);
-            mNot(temp);
-            mInc(temp);
-        }
-
-        System.arraycopy(temp, 0, ints, 0, ints.length);
-        return true;
-    }
-
     // immutable subtraction: copies the first operand and applies mutable mSubtract
     static int[] sub(final int[] a, final int[] b) {
         int[] out = copyOf(a, a.length);
@@ -477,6 +541,38 @@ final class Arrays {
         }
         return overflow;
     }
+
+    // immutable subgt: copies the first operand and applies mutable mSubgt
+    static int[] subgt(final int[] a, final int[] b) {
+        int[] out = copyOf(a, a.length);
+        mSubgt(out, b);
+        return out;
+    }
+
+    // in-place subgt mutating 'ints'
+    static boolean mSubgt(final int[] ints, final int[] other) {
+        Scratchpad pad = SCRATCH.get();
+        int[] temp = pad.a;
+        java.util.Arrays.fill(temp, 0);
+
+        if (ints.length == 0) {
+            System.arraycopy(other, 0, temp, 0, Math.min(other.length, temp.length));
+            mNot(temp);
+            mInc(temp);
+        } else {
+            System.arraycopy(other, 0, temp, 0, Math.min(other.length, temp.length));
+            mSubtract(temp, ints);
+            mNot(temp);
+            mInc(temp);
+        }
+
+        System.arraycopy(temp, 0, ints, 0, ints.length);
+        return true;
+    }
+
+    // =========================================================================
+    // Multiplication
+    // =========================================================================
 
     static int[] multiply(int[] a, int[] b) {
         return multiply(a, b, new boolean[1]);
@@ -546,64 +642,164 @@ final class Arrays {
         return overflow;
     }
 
-    static int[] mulmod(final int[] a, final int[] b, final int[] c) {
-        int[] out = copyOf(a, c.length);
-        mMulMod(out, b, c);
-        return out;
-    }
+    // =========================================================================
+    // Division, Modulo, and Quotient-Remainder
+    // =========================================================================
 
-    static boolean mMulMod(final int[] ints, final int[] mul, final int[] mod) {
-        if (isZero(mod)) throw new ArithmeticException("modulo by zero");
+    static int[] divide(final int[] a, final int[] b) {
+        final int[] cleanA = stripLeadingZeroes(a);
+        final int[] cleanB = stripLeadingZeroes(b);
+        final int[] q;
 
-        mModInPlace(ints, mod);
-
-        Scratchpad pad = SCRATCH.get();
-        int[] tempMul = pad.tempMul;
-        java.util.Arrays.fill(tempMul, 0);
-        System.arraycopy(mul, 0, tempMul, 0, mul.length);
-        mModInPlace(tempMul, mod);
-
-        int[] tempRes = new int[2 * ints.length];
-        System.arraycopy(ints, 0, tempRes, 0, ints.length);
-
-        mMultiply(tempRes, tempMul);
-
-        mModInPlace(tempRes, mod);
-
-        java.util.Arrays.fill(ints, 0);
-        System.arraycopy(tempRes, 0, ints, 0, ints.length);
-        return false;
-    }
-
-
-
-    // immutable addition modulo: copies the first operand to target width and applies mutable mAddMod
-    static int[] addmod(final int[] a, final int[] b, final int[] c) {
-        int[] out = copyOf(a, c.length);
-        mAddMod(out, b, c);
-        return out;
-    }
-
-    // in-place addition modulo mutating 'ints'
-    static boolean mAddMod(final int[] ints, final int[] add, final int[] mod) {
-        if (isZero(mod)) throw new ArithmeticException("modulo by zero");
-
-        mModInPlace(ints, mod);
-
-        Scratchpad pad = SCRATCH.get();
-        int[] tempAdd = pad.tempAdd;
-        java.util.Arrays.fill(tempAdd, 0);
-        System.arraycopy(add, 0, tempAdd, 0, add.length);
-        mModInPlace(tempAdd, mod);
-
-        boolean carry = mAdd(ints, tempAdd);
-        if (carry || compareActive(ints, mod) >= 0) {
-            mSubtract(ints, mod);
+        switch (cleanB.length) {
+            case 1:
+                q = Division.div(cleanA, cleanB[0])[0];
+                break;
+            case 2:
+                final long divisor = ((cleanB[1] & LONG) << 32) | (cleanB[0] & LONG);
+                q = Division.div(cleanA, divisor)[0];
+                break;
+            default:
+                q = Division.div(cleanA, cleanB)[0];
         }
+
+        if (q.length == a.length) {
+            return q;
+        }
+        int[] padded = new int[a.length];
+        int len = Math.min(q.length, a.length);
+        System.arraycopy(q, 0, padded, 0, len);
+        return padded;
+    }
+
+    static boolean mDivide(final int[] ints, final int[] other) {
+        if (isZero(other)) throw new ArithmeticException("divide by zero");
+        if (isZero(ints)) {
+            return false;
+        }
+        int cmp = compareActive(ints, other);
+        if (cmp < 0) {
+            java.util.Arrays.fill(ints, 0);
+            return false;
+        }
+        if (cmp == 0) {
+            java.util.Arrays.fill(ints, 0);
+            ints[0] = 1;
+            return false;
+        }
+
+        Scratchpad pad = SCRATCH.get();
+        java.util.Arrays.fill(pad.quo, 0);
+        java.util.Arrays.fill(pad.rem, 0);
+        java.util.Arrays.fill(pad.div, 0);
+        java.util.Arrays.fill(pad.d, 0);
+
+        int otherEnd = other.length - 1;
+        while (otherEnd >= 0 && other[otherEnd] == 0) {
+            otherEnd--;
+        }
+        int otherActiveLen = otherEnd + 1;
+        System.arraycopy(other, 0, pad.d, 0, otherActiveLen);
+
+        int qints;
+        if (otherActiveLen == 1) {
+            Division.div(ints, ints.length, pad.d[0], pad.quo, pad.rem);
+            qints = ints.length;
+        } else if (otherActiveLen == 2) {
+            final long divisor = ((pad.d[1] & LONG) << 32) | (pad.d[0] & LONG);
+            Division.div(ints, ints.length, divisor, pad.quo, pad.rem);
+            qints = ints.length - 1;
+        } else {
+            Division.div(ints, ints.length, pad.d, otherActiveLen, pad.quo, pad.rem, pad.div);
+            int places = Integer.numberOfLeadingZeros(pad.d[otherActiveLen - 1]);
+            int remLen = ints.length + 1;
+            if (0 < places && places > Integer.numberOfLeadingZeros(ints[ints.length - 1])) {
+                remLen = ints.length + 2;
+            }
+            qints = remLen - otherActiveLen;
+        }
+
+        int len = ints.length;
+        java.util.Arrays.fill(ints, 0);
+        int copyLen = Math.min(qints, len);
+        System.arraycopy(pad.quo, 0, ints, 0, copyLen);
         return false;
     }
 
+    static int[] mod(final int[] a, final int[] b) {
+        final int[] cleanA = stripLeadingZeroes(a);
+        final int[] cleanB = stripLeadingZeroes(b);
+        final int[] r;
 
+        switch (cleanB.length) {
+            case 1:
+                r = Division.div(cleanA, cleanB[0])[1];
+                break;
+            case 2:
+                final long divisor = ((cleanB[1] & LONG) << 32) | (cleanB[0] & LONG);
+                r = Division.div(cleanA, divisor)[1];
+                break;
+            default:
+                r = Division.div(cleanA, cleanB)[1];
+        }
+
+        if (r.length == a.length) {
+            return r;
+        }
+        int[] padded = new int[a.length];
+        int len = Math.min(r.length, a.length);
+        System.arraycopy(r, 0, padded, 0, len);
+        return padded;
+    }
+
+    static boolean mMod(final int[] ints, final int[] other) {
+        if (isZero(other)) throw new ArithmeticException("modulo by zero");
+        mModInPlace(ints, other);
+        return false;
+    }
+
+    static int[][] divmod(final int[] a, final long b) {
+        final int[] cleanA = stripLeadingZeroes(a);
+        final int[][] qr = Division.div(cleanA, b);
+
+        int[] paddedQ = new int[a.length];
+        int lenQ = Math.min(qr[0].length, a.length);
+        System.arraycopy(qr[0], 0, paddedQ, 0, lenQ);
+
+        int[] paddedR = new int[a.length];
+        int lenR = Math.min(qr[1].length, a.length);
+        System.arraycopy(qr[1], 0, paddedR, 0, lenR);
+
+        return new int[][]{paddedQ, paddedR};
+    }
+
+    static int[][] divmod(final int[] a, final int[] b) {
+        final int[] cleanA = stripLeadingZeroes(a);
+        final int[] cleanB = stripLeadingZeroes(b);
+        final int[][] qr;
+
+        switch (cleanB.length) {
+            case 1:
+                qr = Division.div(cleanA, cleanB[0]);
+                break;
+            case 2:
+                final long divisor = ((cleanB[1] & LONG) << 32) | (cleanB[0] & LONG);
+                qr = Division.div(cleanA, divisor);
+                break;
+            default:
+                qr = Division.div(cleanA, cleanB);
+        }
+
+        int[] paddedQ = new int[a.length];
+        int lenQ = Math.min(qr[0].length, a.length);
+        System.arraycopy(qr[0], 0, paddedQ, 0, lenQ);
+
+        int[] paddedR = new int[a.length];
+        int lenR = Math.min(qr[1].length, a.length);
+        System.arraycopy(qr[1], 0, paddedR, 0, lenR);
+
+        return new int[][]{paddedQ, paddedR};
+    }
 
     static void mModInPlace(final int[] val, final int[] mod) {
         if (isZero(val)) {
@@ -666,14 +862,68 @@ final class Arrays {
         }
     }
 
-    static int bitLength(int a[]) {
-        int firstNonZero = a.length - 1;
-        while (firstNonZero >= 0 && a[firstNonZero] == 0) {
-            firstNonZero--;
-        }
-        if (firstNonZero < 0) return 0;
-        return (firstNonZero * 32) + (32 - Integer.numberOfLeadingZeros(a[firstNonZero]));
+    // =========================================================================
+    // Modular Arithmetic
+    // =========================================================================
+
+    // immutable addition modulo: copies the first operand to target width and applies mutable mAddMod
+    static int[] addmod(final int[] a, final int[] b, final int[] c) {
+        int[] out = copyOf(a, c.length);
+        mAddMod(out, b, c);
+        return out;
     }
+
+    // in-place addition modulo mutating 'ints'
+    static boolean mAddMod(final int[] ints, final int[] add, final int[] mod) {
+        if (isZero(mod)) throw new ArithmeticException("modulo by zero");
+
+        mModInPlace(ints, mod);
+
+        Scratchpad pad = SCRATCH.get();
+        int[] tempAdd = pad.tempAdd;
+        java.util.Arrays.fill(tempAdd, 0);
+        System.arraycopy(add, 0, tempAdd, 0, add.length);
+        mModInPlace(tempAdd, mod);
+
+        boolean carry = mAdd(ints, tempAdd);
+        if (carry || compareActive(ints, mod) >= 0) {
+            mSubtract(ints, mod);
+        }
+        return false;
+    }
+
+    static int[] mulmod(final int[] a, final int[] b, final int[] c) {
+        int[] out = copyOf(a, c.length);
+        mMulMod(out, b, c);
+        return out;
+    }
+
+    static boolean mMulMod(final int[] ints, final int[] mul, final int[] mod) {
+        if (isZero(mod)) throw new ArithmeticException("modulo by zero");
+
+        mModInPlace(ints, mod);
+
+        Scratchpad pad = SCRATCH.get();
+        int[] tempMul = pad.tempMul;
+        java.util.Arrays.fill(tempMul, 0);
+        System.arraycopy(mul, 0, tempMul, 0, mul.length);
+        mModInPlace(tempMul, mod);
+
+        int[] tempRes = new int[2 * ints.length];
+        System.arraycopy(ints, 0, tempRes, 0, ints.length);
+
+        mMultiply(tempRes, tempMul);
+
+        mModInPlace(tempRes, mod);
+
+        java.util.Arrays.fill(ints, 0);
+        System.arraycopy(tempRes, 0, ints, 0, ints.length);
+        return false;
+    }
+
+    // =========================================================================
+    // Powers, Squaring, and Roots
+    // =========================================================================
 
     static int[] square(final int[] a, final int maxWidth, boolean[] overflowHolder) {
         int[] padded = copyOf(a, maxWidth);
@@ -772,172 +1022,6 @@ final class Arrays {
         return out;
     }
 
-    static int[] divide(final int[] a, final int[] b) {
-        final int[] cleanA = stripLeadingZeroes(a);
-        final int[] cleanB = stripLeadingZeroes(b);
-        final int[] q;
-
-        switch (cleanB.length) {
-            case 1:
-                q = Division.div(cleanA, cleanB[0])[0];
-                break;
-            case 2:
-                final long divisor = ((cleanB[1] & LONG) << 32) | (cleanB[0] & LONG);
-                q = Division.div(cleanA, divisor)[0];
-                break;
-            default:
-                q = Division.div(cleanA, cleanB)[0];
-        }
-
-        if (q.length == a.length) {
-            return q;
-        }
-        int[] padded = new int[a.length];
-        int len = Math.min(q.length, a.length);
-        System.arraycopy(q, 0, padded, 0, len);
-        return padded;
-    }
-
-    static int[] mod(final int[] a, final int[] b) {
-        final int[] cleanA = stripLeadingZeroes(a);
-        final int[] cleanB = stripLeadingZeroes(b);
-        final int[] r;
-
-        switch (cleanB.length) {
-            case 1:
-                r = Division.div(cleanA, cleanB[0])[1];
-                break;
-            case 2:
-                final long divisor = ((cleanB[1] & LONG) << 32) | (cleanB[0] & LONG);
-                r = Division.div(cleanA, divisor)[1];
-                break;
-            default:
-                r = Division.div(cleanA, cleanB)[1];
-        }
-
-        if (r.length == a.length) {
-            return r;
-        }
-        int[] padded = new int[a.length];
-        int len = Math.min(r.length, a.length);
-        System.arraycopy(r, 0, padded, 0, len);
-        return padded;
-    }
-
-    static int[][] divmod(final int[] a, final long b) {
-        final int[] cleanA = stripLeadingZeroes(a);
-        final int[][] qr = Division.div(cleanA, b);
-
-        int[] paddedQ = new int[a.length];
-        int lenQ = Math.min(qr[0].length, a.length);
-        System.arraycopy(qr[0], 0, paddedQ, 0, lenQ);
-
-        int[] paddedR = new int[a.length];
-        int lenR = Math.min(qr[1].length, a.length);
-        System.arraycopy(qr[1], 0, paddedR, 0, lenR);
-
-        return new int[][]{paddedQ, paddedR};
-    }
-
-    static int[][] divmod(final int[] a, final int[] b) {
-        final int[] cleanA = stripLeadingZeroes(a);
-        final int[] cleanB = stripLeadingZeroes(b);
-        final int[][] qr;
-
-        switch (cleanB.length) {
-            case 1:
-                qr = Division.div(cleanA, cleanB[0]);
-                break;
-            case 2:
-                final long divisor = ((cleanB[1] & LONG) << 32) | (cleanB[0] & LONG);
-                qr = Division.div(cleanA, divisor);
-                break;
-            default:
-                qr = Division.div(cleanA, cleanB);
-        }
-
-        int[] paddedQ = new int[a.length];
-        int lenQ = Math.min(qr[0].length, a.length);
-        System.arraycopy(qr[0], 0, paddedQ, 0, lenQ);
-
-        int[] paddedR = new int[a.length];
-        int lenR = Math.min(qr[1].length, a.length);
-        System.arraycopy(qr[1], 0, paddedR, 0, lenR);
-
-        return new int[][]{paddedQ, paddedR};
-    }
-
-    private static BigInteger BIG_INT = BigInteger.valueOf(LONG);
-
-    static int[] from(BigInteger b, final int maxWidth) {
-        int n = Math.min((b.bitLength() >>> 5) + 1, maxWidth);
-        final int[] ints = new int[n];
-        for (int i = 0; i < n; i++) {
-            ints[i] = b.and(BIG_INT).intValue();
-            b = b.shiftRight(32);
-        }
-        return (0 < ints.length && ints[ints.length - 1] == 0) ? stripLeadingZeroes(ints) : ints;
-    }
-
-    static int[] from(final byte[] bytes, final int[] maxValue) {
-        int len = bytes.length;
-
-        if (len == 0) {
-            return ZERO;
-        }
-
-        int skip;
-        for (skip = 0; skip < len && bytes[skip] == 0; skip++)
-            ;
-
-        final int ints = Math.min(maxValue.length, ((len - skip) + 3) >>> 2);
-        final int[] out = new int[ints];
-        int b = len - 1;
-        for (int i = 0; i < ints; i++) {
-            out[i] = bytes[b--] & 0xff;
-            int copy = Math.min(3, b - skip + 1);
-            for (int j = 8; j <= (copy << 3); j += 8)
-                out[i] |= ((bytes[b--] & 0xff) << j);
-        }
-        return out;
-    }
-
-    static int[] maxValue(final int maxWidth) {
-        final int[] max = new int[maxWidth];
-        java.util.Arrays.fill(max, -1);
-        return max;
-    }
-
-    static BigInteger toBigInteger(final int[] ints) {
-        BigInteger out = BigInteger.ZERO;
-        for (int i = ints.length - 1; i >= 0; i--) {
-            out = out.shiftLeft(32).or(BigInteger.valueOf(ints[i] & LONG));
-        }
-        return out;
-    }
-
-    static boolean isZero(final int[] ints) {
-        for (int val : ints) {
-            if (val != 0) return false;
-        }
-        return true;
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     static boolean mPow(final int[] ints, final int exp) {
         if (exp < 0) throw new ArithmeticException("Negative exponent");
         if (exp == 0) {
@@ -1002,66 +1086,6 @@ final class Arrays {
 
         System.arraycopy(result, 0, ints, 0, len);
         return overflow;
-    }
-
-    static boolean mDivide(final int[] ints, final int[] other) {
-        if (isZero(other)) throw new ArithmeticException("divide by zero");
-        if (isZero(ints)) {
-            return false;
-        }
-        int cmp = compareActive(ints, other);
-        if (cmp < 0) {
-            java.util.Arrays.fill(ints, 0);
-            return false;
-        }
-        if (cmp == 0) {
-            java.util.Arrays.fill(ints, 0);
-            ints[0] = 1;
-            return false;
-        }
-
-        Scratchpad pad = SCRATCH.get();
-        java.util.Arrays.fill(pad.quo, 0);
-        java.util.Arrays.fill(pad.rem, 0);
-        java.util.Arrays.fill(pad.div, 0);
-        java.util.Arrays.fill(pad.d, 0);
-
-        int otherEnd = other.length - 1;
-        while (otherEnd >= 0 && other[otherEnd] == 0) {
-            otherEnd--;
-        }
-        int otherActiveLen = otherEnd + 1;
-        System.arraycopy(other, 0, pad.d, 0, otherActiveLen);
-
-        int qints;
-        if (otherActiveLen == 1) {
-            Division.div(ints, ints.length, pad.d[0], pad.quo, pad.rem);
-            qints = ints.length;
-        } else if (otherActiveLen == 2) {
-            final long divisor = ((pad.d[1] & LONG) << 32) | (pad.d[0] & LONG);
-            Division.div(ints, ints.length, divisor, pad.quo, pad.rem);
-            qints = ints.length - 1;
-        } else {
-            Division.div(ints, ints.length, pad.d, otherActiveLen, pad.quo, pad.rem, pad.div);
-            int places = Integer.numberOfLeadingZeros(pad.d[otherActiveLen - 1]);
-            int remLen = ints.length + 1;
-            if (0 < places && places > Integer.numberOfLeadingZeros(ints[ints.length - 1])) {
-                remLen = ints.length + 2;
-            }
-            qints = remLen - otherActiveLen;
-        }
-
-        int len = ints.length;
-        java.util.Arrays.fill(ints, 0);
-        int copyLen = Math.min(qints, len);
-        System.arraycopy(pad.quo, 0, ints, 0, copyLen);
-        return false;
-    }
-
-    static boolean mMod(final int[] ints, final int[] other) {
-        if (isZero(other)) throw new ArithmeticException("modulo by zero");
-        mModInPlace(ints, other);
-        return false;
     }
 
     static int[] sqrt(final int[] a, final int maxWidth) {
