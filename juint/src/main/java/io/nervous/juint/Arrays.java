@@ -1058,15 +1058,32 @@ final class Arrays {
     }
 
     static int[] sqrt(final int[] a) {
-        int targetWidth = a.length;
-        int[] op = copyOf(a, targetWidth);
-        int[] res = new int[targetWidth];
-        int[] one = new int[targetWidth];
-        int[] sum = new int[targetWidth];
+        int[] out = copyOf(a, a.length);
+        mSqrt(out);
+        return out;
+    }
+
+    static boolean mSqrt(final int[] ints) {
+        if (isZero(ints)) {
+            return false;
+        }
+
+        Scratchpad pad = SCRATCH.get();
+        int[] op = pad.a;
+        int[] one = pad.b;
+        int[] sum = pad.c;
+
+        java.util.Arrays.fill(op, 0);
+        java.util.Arrays.fill(one, 0);
+        java.util.Arrays.fill(sum, 0);
+
+        int targetWidth = ints.length;
+        System.arraycopy(ints, 0, op, 0, targetWidth);
 
         int bit = bitLength(op);
         if (bit == 0) {
-            return res;
+            java.util.Arrays.fill(ints, 0);
+            return false;
         }
         if (bit % 2 == 0) {
             bit -= 2;
@@ -1075,31 +1092,22 @@ final class Arrays {
         }
         mSetBit(one, bit);
 
+        java.util.Arrays.fill(ints, 0);
+
         while (!isZero(one)) {
-            System.arraycopy(res, 0, sum, 0, targetWidth);
+            System.arraycopy(ints, 0, sum, 0, targetWidth);
             mAdd(sum, one);
 
             if (compareActive(op, sum) >= 0) {
                 mSubtract(op, sum);
-                mShiftRight(res, 1);
-                mAdd(res, one);
+                mShiftRight(ints, 1);
+                mAdd(ints, one);
             } else {
-                mShiftRight(res, 1);
+                mShiftRight(ints, 1);
             }
             mShiftRight(one, 2);
         }
 
-        return res;
-    }
-
-    static boolean mSqrt(final int[] ints) {
-        if (isZero(ints)) {
-            return false;
-        }
-        int[] res = sqrt(ints);
-        java.util.Arrays.fill(ints, 0);
-        int copyLen = Math.min(res.length, ints.length);
-        System.arraycopy(res, 0, ints, 0, copyLen);
         return false;
     }
 }
