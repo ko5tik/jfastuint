@@ -6,14 +6,12 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>io.nervous</groupId>
-    <artifactId>juint-parent</artifactId>
-    <version>0.1.0</version>
+    <groupId>de.pribluda.ether</groupId>
+    <artifactId>jfastuint-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
   </parent>
 
-  <groupId>io.nervous</groupId>
-  <artifactId>juint-mutable</artifactId>
-  <version>0.1.0-mutable-SNAPSHOT</version>
+  <artifactId>jfastuint</artifactId>
   <name>${project.groupId}:${project.artifactId}</name>
   <description>Optimized, immutable, unsigned wide integer types.</description>
   <url>https://github.com/nervous-systems/juint</url>

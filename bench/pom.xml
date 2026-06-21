@@ -5,14 +5,13 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>io.nervous</groupId>
-    <artifactId>juint-parent</artifactId>
-    <version>0.1.0-mutable-SNAPSHOT</version>
+    <groupId>de.pribluda.ether</groupId>
+    <artifactId>jfastuint-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
   </parent>
 
-  <groupId>io.nervous.juint</groupId>
+
   <artifactId>bench</artifactId>
-  <version>0.1.0-mutable-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <dependencies>
@@ -28,9 +27,9 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>io.nervous</groupId>
-      <artifactId>juint-mutable</artifactId>
-      <version>0.1.0-mutable</version>
+      <groupId>de.pribluda.ether</groupId>
+      <artifactId>jfastuint</artifactId>
+      <version>${project.version}</version>
     </dependency>
 
   </dependencies>
