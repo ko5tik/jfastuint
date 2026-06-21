@@ -129,19 +129,19 @@ public final class UInt128 extends UInt<UInt128> {
   public UInt128 shiftLeft(final int places) {
     return new UInt128(
       0 < places ?
-      Arrays.lshift(ints,  places, MAX_WIDTH) :
-      Arrays.rshift(ints, -places, MAX_WIDTH), false);
+      Arrays.lshift(ints,  places) :
+      Arrays.rshift(ints, -places), false);
   }
 
   public UInt128 shiftRight(final int places) {
     return new UInt128(
       0 < places ?
-      Arrays.rshift(ints,  places, MAX_WIDTH) :
-      Arrays.lshift(ints, -places, MAX_WIDTH), false);
+      Arrays.rshift(ints,  places) :
+      Arrays.lshift(ints, -places), false);
   }
 
   public UInt128 inc() {
-    return new UInt128(Arrays.inc(ints, MAX_WIDTH), false);
+    return new UInt128(Arrays.inc(ints), false);
   }
 
   public UInt128 dec() {
@@ -151,7 +151,7 @@ public final class UInt128 extends UInt<UInt128> {
   public UInt128 add(final UInt128 other) {
     return (isZero() ? other :
             (other.isZero() ? this :
-             new UInt128(Arrays.add(ints, other.ints, MAX_WIDTH), false)));
+             new UInt128(Arrays.add(ints, other.ints), false)));
   }
 
   public UInt128 addmod(final UInt128 add, final UInt128 mod) {
@@ -203,7 +203,7 @@ public final class UInt128 extends UInt<UInt128> {
       return this;
     }
     boolean[] overflow = new boolean[1];
-    int[] res = Arrays.pow(ints, getLowestSetBit(), exp, MAX_WIDTH, overflow);
+    int[] res = Arrays.pow(ints, getLowestSetBit(), exp, overflow);
     return new UInt128(res, overflow[0]);
   }
 
@@ -211,7 +211,7 @@ public final class UInt128 extends UInt<UInt128> {
     if (isZero()) {
       return ZERO;
     }
-    return new UInt128(Arrays.sqrt(ints, MAX_WIDTH), false);
+    return new UInt128(Arrays.sqrt(ints), false);
   }
 
   public UInt128 divide(final UInt128 other) {

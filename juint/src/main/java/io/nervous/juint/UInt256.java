@@ -127,19 +127,19 @@ public final class UInt256 extends UInt<UInt256> {
   public UInt256 shiftLeft(final int places) {
     return new UInt256(
       0 < places ?
-      Arrays.lshift(ints,  places, MAX_WIDTH) :
-      Arrays.rshift(ints, -places, MAX_WIDTH), false);
+      Arrays.lshift(ints,  places) :
+      Arrays.rshift(ints, -places), false);
   }
 
   public UInt256 shiftRight(final int places) {
     return new UInt256(
       0 < places ?
-      Arrays.rshift(ints,  places, MAX_WIDTH) :
-      Arrays.lshift(ints, -places, MAX_WIDTH), false);
+      Arrays.rshift(ints,  places) :
+      Arrays.lshift(ints, -places), false);
   }
 
   public UInt256 inc() {
-    return new UInt256(Arrays.inc(ints, MAX_WIDTH), false);
+    return new UInt256(Arrays.inc(ints), false);
   }
 
   public UInt256 dec() {
@@ -149,7 +149,7 @@ public final class UInt256 extends UInt<UInt256> {
   public UInt256 add(final UInt256 other) {
     return (isZero() ? other :
             (other.isZero() ? this :
-             new UInt256(Arrays.add(ints, other.ints, MAX_WIDTH), false)));
+             new UInt256(Arrays.add(ints, other.ints), false)));
   }
 
   public UInt256 addmod(final UInt256 add, final UInt256 mod) {
@@ -204,7 +204,7 @@ public final class UInt256 extends UInt<UInt256> {
       return this;
     }
     boolean[] overflow = new boolean[1];
-    int[] res = Arrays.pow(ints, getLowestSetBit(), exp, MAX_WIDTH, overflow);
+    int[] res = Arrays.pow(ints, getLowestSetBit(), exp, overflow);
     return new UInt256(res, overflow[0]);
   }
 
@@ -212,7 +212,7 @@ public final class UInt256 extends UInt<UInt256> {
     if (isZero()) {
       return ZERO;
     }
-    return new UInt256(Arrays.sqrt(ints, MAX_WIDTH), false);
+    return new UInt256(Arrays.sqrt(ints), false);
   }
 
   public UInt256 divide(final UInt256 other) {

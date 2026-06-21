@@ -43,6 +43,8 @@ final class Arrays {
         final int[] tempMul = new int[128];
         final int[] product = new int[128];
         final int[] productClean = new int[128];
+        final int[] tempRes8 = new int[8];
+        final int[] tempRes16 = new int[16];
     }
 
     static final ThreadLocal<Scratchpad> SCRATCH = ThreadLocal.withInitial(Scratchpad::new);
@@ -192,7 +194,7 @@ final class Arrays {
         return 0;
     }
 
-    static int compare(final int[] ints, final BigInteger other, final int maxWidth) {
+    static int compare(final int[] ints, final BigInteger other) {
         final int il = bitLength(ints), bl = other.bitLength();
         if (il < bl) {
             return -1;
@@ -201,7 +203,7 @@ final class Arrays {
             return 1;
         }
 
-        return compareActive(ints, from(other, maxWidth));
+        return compareActive(ints, from(other, ints.length));
     }
 
     // =========================================================================
@@ -324,9 +326,8 @@ final class Arrays {
     // =========================================================================
 
     // immutable lshift: copies the operand to target width and applies mutable mShiftLeft
-    static int[] lshift(final int[] a, final int n, final int maxWidth) {
-        int targetWidth = maxWidth == -1 ? a.length + (n >>> 5) + ((n & 0x1f) != 0 ? 1 : 0) : maxWidth;
-        int[] out = copyOf(a, targetWidth);
+    static int[] lshift(final int[] a, final int n) {
+        int[] out = copyOf(a, a.length);
         mShiftLeft(out, n);
         return out;
     }
@@ -376,9 +377,8 @@ final class Arrays {
     }
 
     // immutable rshift: copies the operand to target width and applies mutable mShiftRight
-    static int[] rshift(final int[] a, final int n, final int maxWidth) {
-        int targetWidth = maxWidth == -1 ? a.length : maxWidth;
-        int[] out = copyOf(a, targetWidth);
+    static int[] rshift(final int[] a, final int n) {
+        int[] out = copyOf(a, a.length);
         mShiftRight(out, n);
         return out;
     }
@@ -432,9 +432,8 @@ final class Arrays {
     // =========================================================================
 
     // immutable inc: copies the operand to target width and applies mutable mInc
-    static int[] inc(final int[] a, final int maxWidth) {
-        int targetWidth = maxWidth == -1 ? a.length : maxWidth;
-        int[] out = copyOf(a, targetWidth);
+    static int[] inc(final int[] a) {
+        int[] out = copyOf(a, a.length);
         mInc(out);
         return out;
     }
@@ -469,9 +468,8 @@ final class Arrays {
     }
 
     // immutable addition: copies the longer operand to target width and applies mutable mAdd
-    static int[] add(final int[] a, final int[] b, final int maxWidth) {
-        int targetWidth = maxWidth == -1 ? a.length : maxWidth;
-        int[] out = copyOf(a, targetWidth);
+    static int[] add(final int[] a, final int[] b) {
+        int[] out = copyOf(a, a.length);
         mAdd(out, b);
         return out;
     }
@@ -873,7 +871,13 @@ final class Arrays {
         System.arraycopy(mul, 0, tempMul, 0, mul.length);
         mModInPlace(tempMul, mod);
 
-        int[] tempRes = new int[2 * ints.length];
+        int[] tempRes;
+        if (ints.length == 4) {
+            tempRes = pad.tempRes8;
+        } else  {
+            tempRes = pad.tempRes16;
+        }
+        java.util.Arrays.fill(tempRes, 0);
         System.arraycopy(ints, 0, tempRes, 0, ints.length);
 
         mMultiply(tempRes, tempMul);
@@ -889,28 +893,29 @@ final class Arrays {
     // Powers, Squaring, and Roots
     // =========================================================================
 
-    static int[] square(final int[] a, final int maxWidth, boolean[] overflowHolder) {
-        int[] padded = copyOf(a, maxWidth);
+    static int[] square(final int[] a, boolean[] overflowHolder) {
+        int[] padded = copyOf(a, a.length);
         return multiply(padded, padded, overflowHolder);
     }
 
-    static int[] square(final int[] a, final int maxWidth) {
-        int[] padded = copyOf(a, maxWidth);
+    static int[] square(final int[] a) {
+        int[] padded = copyOf(a, a.length);
         return multiply(padded, padded);
     }
 
-    static int[] pow(int[] a, final int lo, int exp, final int maxWidth) {
-        return pow(a, lo, exp, maxWidth, new boolean[1]);
+    static int[] pow(int[] a, final int lo, int exp) {
+        return pow(a, lo, exp, new boolean[1]);
     }
 
-    static int[] pow(int[] a, final int lo, int exp, final int maxWidth, boolean[] overflowHolder) {
-        int[] res = powInternal(a, lo, exp, maxWidth, overflowHolder);
-        return UInt.padToWidth(res, maxWidth);
+    static int[] pow(int[] a, final int lo, int exp, boolean[] overflowHolder) {
+        int[] res = powInternal(a, lo, exp, overflowHolder);
+        return res;
     }
 
-    private static int[] powInternal(int[] a, final int lo, int exp, final int maxWidth, boolean[] overflowHolder) {
+    private static int[] powInternal(int[] a, final int lo, int exp, boolean[] overflowHolder) {
+        final int maxWidth = a.length;
         if (exp == 2) {
-            return square(a, maxWidth, overflowHolder);
+            return square(a, overflowHolder);
         }
 
         long shift = (long) lo * exp;
@@ -920,14 +925,14 @@ final class Arrays {
         }
 
         if (0 < lo) {
-            a = rshift(a, lo, maxWidth);
+            a = rshift(a, lo);
         }
 
         final int bits = bitLength(a);
         if (bits == 1) {
             boolean overflow = (lo * exp >= maxWidth * 32);
             overflowHolder[0] = overflow;
-            return 0 < lo ? lshift(ONE, lo * exp, maxWidth) : ONE;
+            return 0 < lo ? lshift(valueOf(1, maxWidth), lo * exp) : valueOf(1, maxWidth);
         }
 
         long scale = (long) bits * exp;
@@ -948,7 +953,7 @@ final class Arrays {
                 overflowHolder[0] = overflow;
                 return ((shift + scale) < 63 ?
                         valueOf(out << shift, maxWidth) :
-                        lshift(valueOf(out, maxWidth), (int) shift, maxWidth));
+                        lshift(valueOf(out, maxWidth), (int) shift));
             }
             int outBits = 64 - Long.numberOfLeadingZeros(out);
             boolean overflow = (outBits > maxWidth * 32);
@@ -957,19 +962,19 @@ final class Arrays {
         }
 
         final int lplaces = lo * exp;
-        int[] out = ONE;
+        int[] out = valueOf(1, maxWidth);
         boolean overflow = false;
         boolean[] stepOverflow = new boolean[1];
 
         while (exp != 0) {
             if ((exp & 1) == 1) {
-                out = multiply(copyOf(out, maxWidth), a, stepOverflow);
+                out = multiply(out, a, stepOverflow);
                 if (stepOverflow[0]) {
                     overflow = true;
                 }
             }
             if ((exp >>>= 1) != 0) {
-                a = square(a, maxWidth, stepOverflow);
+                a = square(a, stepOverflow);
                 if (stepOverflow[0]) {
                     overflow = true;
                 }
@@ -980,7 +985,7 @@ final class Arrays {
             if (!isZero(out) && (lplaces >= maxWidth * 32 || bitLength(out) + lplaces > maxWidth * 32)) {
                 overflow = true;
             }
-            out = lshift(out, lplaces, maxWidth);
+            out = lshift(out, lplaces);
         }
         overflowHolder[0] = overflow;
         return out;
@@ -1052,8 +1057,8 @@ final class Arrays {
         return overflow;
     }
 
-    static int[] sqrt(final int[] a, final int maxWidth) {
-        int targetWidth = maxWidth == -1 ? a.length : maxWidth;
+    static int[] sqrt(final int[] a) {
+        int targetWidth = a.length;
         int[] op = copyOf(a, targetWidth);
         int[] res = new int[targetWidth];
         int[] one = new int[targetWidth];
@@ -1091,7 +1096,7 @@ final class Arrays {
         if (isZero(ints)) {
             return false;
         }
-        int[] res = sqrt(ints, ints.length);
+        int[] res = sqrt(ints);
         java.util.Arrays.fill(ints, 0);
         int copyLen = Math.min(res.length, ints.length);
         System.arraycopy(res, 0, ints, 0, copyLen);
