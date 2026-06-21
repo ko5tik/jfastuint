@@ -45,6 +45,16 @@ final class Arrays {
         final int[] productClean = new int[128];
         final int[] tempRes8 = new int[8];
         final int[] tempRes16 = new int[16];
+        final int[] a4 = new int[4];
+        final int[] a8 = new int[8];
+        final int[] b4 = new int[4];
+        final int[] b8 = new int[8];
+        final int[] c4 = new int[4];
+        final int[] c8 = new int[8];
+        final int[] d4 = new int[4];
+        final int[] d8 = new int[8];
+        final int[] r4 = new int[4];
+        final int[] r8 = new int[8];
     }
 
     static final ThreadLocal<Scratchpad> SCRATCH = ThreadLocal.withInitial(Scratchpad::new);
@@ -903,91 +913,22 @@ final class Arrays {
         return multiply(padded, padded);
     }
 
-    static int[] pow(int[] a, final int lo, int exp) {
-        return pow(a, lo, exp, new boolean[1]);
+    static int getLowestSetBit(final int[] ints) {
+        for (int i = 0; i < ints.length; i++) {
+            if (ints[i] != 0) {
+                return i * 32 + Integer.numberOfTrailingZeros(ints[i]);
+            }
+        }
+        return -1;
     }
 
-    static int[] pow(int[] a, final int lo, int exp, boolean[] overflowHolder) {
-        int[] res = powInternal(a, lo, exp, overflowHolder);
-        return res;
+    static int[] pow(int[] a, int exp) {
+        return pow(a, exp, new boolean[1]);
     }
 
-    private static int[] powInternal(int[] a, final int lo, int exp, boolean[] overflowHolder) {
-        final int maxWidth = a.length;
-        if (exp == 2) {
-            return square(a, overflowHolder);
-        }
-
-        long shift = (long) lo * exp;
-        if (Integer.MAX_VALUE < shift) {
-            overflowHolder[0] = true;
-            return new int[maxWidth];
-        }
-
-        if (0 < lo) {
-            a = rshift(a, lo);
-        }
-
-        final int bits = bitLength(a);
-        if (bits == 1) {
-            boolean overflow = (lo * exp >= maxWidth * 32);
-            overflowHolder[0] = overflow;
-            return 0 < lo ? lshift(valueOf(1, maxWidth), lo * exp) : valueOf(1, maxWidth);
-        }
-
-        long scale = (long) bits * exp;
-
-        if (a.length == 1 && scale < 63) {
-            long out = 1, base = a[0] & LONG;
-
-            while (exp != 0) {
-                if ((exp & 1) == 1)
-                    out *= base;
-                if ((exp >>>= 1) != 0)
-                    base *= base;
-            }
-
-            if (0 < lo) {
-                int outBits = 64 - Long.numberOfLeadingZeros(out);
-                boolean overflow = (shift >= maxWidth * 32) || (outBits + shift > maxWidth * 32);
-                overflowHolder[0] = overflow;
-                return ((shift + scale) < 63 ?
-                        valueOf(out << shift, maxWidth) :
-                        lshift(valueOf(out, maxWidth), (int) shift));
-            }
-            int outBits = 64 - Long.numberOfLeadingZeros(out);
-            boolean overflow = (outBits > maxWidth * 32);
-            overflowHolder[0] = overflow;
-            return valueOf(out, maxWidth);
-        }
-
-        final int lplaces = lo * exp;
-        int[] out = valueOf(1, maxWidth);
-        boolean overflow = false;
-        boolean[] stepOverflow = new boolean[1];
-
-        while (exp != 0) {
-            if ((exp & 1) == 1) {
-                out = multiply(out, a, stepOverflow);
-                if (stepOverflow[0]) {
-                    overflow = true;
-                }
-            }
-            if ((exp >>>= 1) != 0) {
-                a = square(a, stepOverflow);
-                if (stepOverflow[0]) {
-                    overflow = true;
-                }
-            }
-        }
-
-        if (0 < lplaces) {
-            if (!isZero(out) && (lplaces >= maxWidth * 32 || bitLength(out) + lplaces > maxWidth * 32)) {
-                overflow = true;
-            }
-            out = lshift(out, lplaces);
-        }
-        overflowHolder[0] = overflow;
+    static int[] pow(int[] a, int exp, boolean[] overflowHolder) {
+        int[] out = copyOf(a, a.length);
+        overflowHolder[0] = mPow(out, exp);
         return out;
     }
 
@@ -1005,56 +946,148 @@ final class Arrays {
             return false;
         }
 
+        final int maxWidth = ints.length;
+        final int lo = getLowestSetBit(ints);
+
         Scratchpad pad = SCRATCH.get();
-        int[] base = pad.a;
-        int[] result = pad.b;
+        int[] a;
+        int[] out;
+        int[] tempC;
+        int[] tempD;
+        int[] res;
 
-        java.util.Arrays.fill(base, 0);
-        java.util.Arrays.fill(result, 0);
+        if (maxWidth == 4) {
+            a = pad.a4;
+            out = pad.b4;
+            tempC = pad.c4;
+            tempD = pad.d4;
+            res = pad.r4;
+        } else if (maxWidth == 8) {
+            a = pad.a8;
+            out = pad.b8;
+            tempC = pad.c8;
+            tempD = pad.d8;
+            res = pad.r8;
+        } else {
+            a = new int[maxWidth];
+            out = new int[maxWidth];
+            tempC = new int[maxWidth];
+            tempD = new int[maxWidth];
+            res = new int[maxWidth];
+        }
 
-        int len = ints.length;
-        System.arraycopy(ints, 0, base, 0, len);
-        result[0] = 1;
+        java.util.Arrays.fill(a, 0);
+        System.arraycopy(ints, 0, a, 0, maxWidth);
 
-        boolean overflow = false;
-        int e = exp;
-        while (e > 0) {
-            if ((e & 1) == 1) {
-                java.util.Arrays.fill(pad.c, 0);
-                System.arraycopy(result, 0, pad.c, 0, len);
+        boolean[] overflowHolder = new boolean[1];
 
-                java.util.Arrays.fill(pad.d, 0);
-                System.arraycopy(base, 0, pad.d, 0, len);
+        int[] resultArr;
+        if (exp == 2) {
+            java.util.Arrays.fill(res, 0);
+            System.arraycopy(a, 0, res, 0, maxWidth);
+            overflowHolder[0] = mMultiply(res, res);
+            resultArr = res;
+        } else {
+            long shift = (long) lo * exp;
+            if (Integer.MAX_VALUE < shift) {
+                overflowHolder[0] = true;
+                java.util.Arrays.fill(res, 0);
+                resultArr = res;
+            } else {
+                if (0 < lo) {
+                    mShiftRight(a, lo);
+                }
 
-                mMultiply(pad.c, pad.d);
+                final int bits = bitLength(a);
+                if (bits == 1) {
+                    boolean overflow = (lo * exp >= maxWidth * 32);
+                    overflowHolder[0] = overflow;
+                    java.util.Arrays.fill(res, 0);
+                    res[0] = 1;
+                    if (0 < lo) {
+                        mShiftLeft(res, lo * exp);
+                    }
+                    resultArr = res;
+                } else {
+                    long scale = (long) bits * exp;
 
-                for (int i = len; i < pad.c.length; i++) {
-                    if (pad.c[i] != 0) {
-                        overflow = true;
-                        break;
+                    if (maxWidth == 1 && scale < 63) {
+                        long outVal = 1, base = a[0] & LONG;
+
+                        int e = exp;
+                        while (e != 0) {
+                            if ((e & 1) == 1)
+                                outVal *= base;
+                            if ((e >>>= 1) != 0)
+                                base *= base;
+                        }
+
+                        java.util.Arrays.fill(res, 0);
+                        if (0 < lo) {
+                            int outBits = 64 - Long.numberOfLeadingZeros(outVal);
+                            boolean overflow = (shift >= maxWidth * 32) || (outBits + shift > maxWidth * 32);
+                            overflowHolder[0] = overflow;
+                            if ((shift + scale) < 63) {
+                                long val = outVal << shift;
+                                res[0] = (int) val;
+                                if (maxWidth > 1) {
+                                    res[1] = (int) (val >>> 32);
+                                }
+                            } else {
+                                res[0] = (int) outVal;
+                                mShiftLeft(res, (int) shift);
+                            }
+                        } else {
+                            int outBits = 64 - Long.numberOfLeadingZeros(outVal);
+                            boolean overflow = (outBits > maxWidth * 32);
+                            overflowHolder[0] = overflow;
+                            res[0] = (int) outVal;
+                        }
+                        resultArr = res;
+                    } else {
+                        final int lplaces = lo * exp;
+                        java.util.Arrays.fill(out, 0);
+                        out[0] = 1;
+
+                        boolean overflow = false;
+                        int e = exp;
+                        while (e != 0) {
+                            if ((e & 1) == 1) {
+                                java.util.Arrays.fill(tempD, 0);
+                                System.arraycopy(out, 0, tempD, 0, maxWidth);
+                                boolean stepOverflow = mMultiply(tempD, a);
+                                if (stepOverflow) {
+                                    overflow = true;
+                                }
+                                System.arraycopy(tempD, 0, out, 0, maxWidth);
+                            }
+                            if ((e >>>= 1) != 0) {
+                                java.util.Arrays.fill(tempC, 0);
+                                System.arraycopy(a, 0, tempC, 0, maxWidth);
+                                boolean stepOverflow = mMultiply(tempC, tempC);
+                                if (stepOverflow) {
+                                    overflow = true;
+                                }
+                                System.arraycopy(tempC, 0, a, 0, maxWidth);
+                            }
+                        }
+
+                        if (0 < lplaces) {
+                            if (!isZero(out) && (lplaces >= maxWidth * 32 || bitLength(out) + lplaces > maxWidth * 32)) {
+                                overflow = true;
+                            }
+                            mShiftLeft(out, lplaces);
+                        }
+                        overflowHolder[0] = overflow;
+                        resultArr = out;
                     }
                 }
-                System.arraycopy(pad.c, 0, result, 0, len);
-            }
-            e >>>= 1;
-            if (e > 0) {
-                java.util.Arrays.fill(pad.c, 0);
-                System.arraycopy(base, 0, pad.c, 0, len);
-
-                mMultiply(pad.c, pad.c);
-
-                for (int i = len; i < pad.c.length; i++) {
-                    if (pad.c[i] != 0) {
-                        overflow = true;
-                        break;
-                    }
-                }
-                System.arraycopy(pad.c, 0, base, 0, len);
             }
         }
 
-        System.arraycopy(result, 0, ints, 0, len);
-        return overflow;
+        java.util.Arrays.fill(ints, 0);
+        System.arraycopy(resultArr, 0, ints, 0, maxWidth);
+        return overflowHolder[0];
     }
 
     static int[] sqrt(final int[] a) {

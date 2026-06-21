@@ -203,7 +203,7 @@ public final class UInt128 extends UInt<UInt128> {
       return this;
     }
     boolean[] overflow = new boolean[1];
-    int[] res = Arrays.pow(ints, getLowestSetBit(), exp, overflow);
+    int[] res = Arrays.pow(ints, exp, overflow);
     return new UInt128(res, overflow[0]);
   }
 
