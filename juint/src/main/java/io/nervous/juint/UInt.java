@@ -41,7 +41,7 @@ public abstract class UInt<T extends UInt>
   }
 
   UInt(final long l, final int maxWidth) {
-    this.ints = padToWidth(Arrays.valueOf(l), maxWidth);
+    this.ints = Arrays.valueOf(l, maxWidth);
   }
 
   UInt(final int[] ints) {
@@ -61,11 +61,11 @@ public abstract class UInt<T extends UInt>
   }
 
   UInt(final BigInteger b, final int maxWidth) {
-    this(padToWidth(Arrays.from(b, maxWidth), maxWidth));
+    this(Arrays.from(b, maxWidth));
   }
 
   UInt(final byte[] bytes, final UInt maxValue) {
-    this(padToWidth(Arrays.from(bytes, maxValue.ints), maxValue.ints.length));
+    this(Arrays.from(bytes, maxValue.ints));
   }
 
   /**

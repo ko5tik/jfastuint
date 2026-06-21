@@ -51,38 +51,38 @@ final class Arrays {
     // Basic Helpers & Conversions
     // =========================================================================
 
-    static int[] valueOf(final long v) {
-        if (0 <= v && v < MAX_CACHE) {
-            return CACHE[(int) v];
+    static int[] valueOf(final long v, final int maxWidth) {
+        final int[] out = new int[maxWidth];
+        out[0] = (int) v;
+        if (maxWidth > 1) {
+            out[1] = (int) (v >>> 32);
         }
-
-        final int hi = (int) (v >>> 32);
-        return hi == 0 ? new int[]{(int) v} : new int[]{(int) v, hi};
+        return out;
     }
 
     static int[] from(BigInteger b, final int maxWidth) {
-        int n = Math.min((b.bitLength() >>> 5) + 1, maxWidth);
-        final int[] ints = new int[n];
-        for (int i = 0; i < n; i++) {
+        final int[] ints = new int[maxWidth];
+        for (int i = 0; i < maxWidth; i++) {
             ints[i] = b.and(BIG_INT).intValue();
             b = b.shiftRight(32);
         }
-        return (0 < ints.length && ints[ints.length - 1] == 0) ? stripLeadingZeroes(ints) : ints;
+        return ints;
     }
 
     static int[] from(final byte[] bytes, final int[] maxValue) {
         int len = bytes.length;
+        final int maxWidth = maxValue.length;
+        final int[] out = new int[maxWidth];
 
         if (len == 0) {
-            return ZERO;
+            return out;
         }
 
         int skip;
         for (skip = 0; skip < len && bytes[skip] == 0; skip++)
             ;
 
-        final int ints = Math.min(maxValue.length, ((len - skip) + 3) >>> 2);
-        final int[] out = new int[ints];
+        final int ints = Math.min(maxWidth, ((len - skip) + 3) >>> 2);
         int b = len - 1;
         for (int i = 0; i < ints; i++) {
             out[i] = bytes[b--] & 0xff;
@@ -92,6 +92,7 @@ final class Arrays {
         }
         return out;
     }
+
 
     static BigInteger toBigInteger(final int[] ints) {
         BigInteger out = BigInteger.ZERO;
@@ -706,47 +707,62 @@ final class Arrays {
         return false;
     }
 
+    /**
+     * Calculates both division quotient and remainder simultaneously (immutable version).
+     * Copies the dividend array and delegates to the mutable {@code mDivmod}.
+     *
+     * @param a the dividend array
+     * @param b the divisor value as a long
+     * @return a two-dimensional array where index 0 is the quotient and index 1 is the remainder
+     */
     static int[][] divmod(final int[] a, final long b) {
-        final int[] cleanA = stripLeadingZeroes(a);
-        final int[][] qr = Division.div(cleanA, b);
-
-        int[] paddedQ = new int[a.length];
-        int lenQ = Math.min(qr[0].length, a.length);
-        System.arraycopy(qr[0], 0, paddedQ, 0, lenQ);
-
-        int[] paddedR = new int[a.length];
-        int lenR = Math.min(qr[1].length, a.length);
-        System.arraycopy(qr[1], 0, paddedR, 0, lenR);
-
-        return new int[][]{paddedQ, paddedR};
+        int[] q = copyOf(a, a.length);
+        int[] r = copyOf(a, a.length);
+        mDivmod(q, r, b);
+        return new int[][]{q, r};
     }
 
+    /**
+     * Calculates both division quotient and remainder simultaneously (immutable version).
+     * Copies the dividend array and delegates to the mutable {@code mDivmod}.
+     *
+     * @param a the dividend array
+     * @param b the divisor array
+     * @return a two-dimensional array where index 0 is the quotient and index 1 is the remainder
+     */
     static int[][] divmod(final int[] a, final int[] b) {
-        final int[] cleanA = stripLeadingZeroes(a);
-        final int[] cleanB = stripLeadingZeroes(b);
-        final int[][] qr;
+        int[] q = copyOf(a, a.length);
+        int[] r = copyOf(a, a.length);
+        mDivmod(q, r, b);
+        return new int[][]{q, r};
+    }
 
-        switch (cleanB.length) {
-            case 1:
-                qr = Division.div(cleanA, cleanB[0]);
-                break;
-            case 2:
-                final long divisor = ((cleanB[1] & LONG) << 32) | (cleanB[0] & LONG);
-                qr = Division.div(cleanA, divisor);
-                break;
-            default:
-                qr = Division.div(cleanA, cleanB);
-        }
+    /**
+     * Performs simultaneous division and modulo in-place (mutable version).
+     * Delegates to the array-based version of {@code mDivmod} using valueOf(b).
+     *
+     * @param q target quotient array to be modified in-place
+     * @param r target remainder array to be modified in-place
+     * @param b the divisor value as a long
+     * @return false (overflow flag not used)
+     */
+    static boolean mDivmod(final int[] q, final int[] r, final long b) {
+        return mDivmod(q, r, valueOf(b, q.length));
+    }
 
-        int[] paddedQ = new int[a.length];
-        int lenQ = Math.min(qr[0].length, a.length);
-        System.arraycopy(qr[0], 0, paddedQ, 0, lenQ);
-
-        int[] paddedR = new int[a.length];
-        int lenR = Math.min(qr[1].length, a.length);
-        System.arraycopy(qr[1], 0, paddedR, 0, lenR);
-
-        return new int[][]{paddedQ, paddedR};
+    /**
+     * Performs simultaneous division and modulo in-place (mutable version).
+     * Modifies the supplied {@code q} and {@code r} arrays to store the quotient and remainder.
+     *
+     * @param q target quotient array to be modified in-place
+     * @param r target remainder array to be modified in-place
+     * @param b the divisor array
+     * @return false (overflow flag not used)
+     */
+    static boolean mDivmod(final int[] q, final int[] r, final int[] b) {
+        mDivide(q, b);
+        mMod(r, b);
+        return false;
     }
 
     static void mModInPlace(final int[] val, final int[] mod) {
@@ -931,13 +947,13 @@ final class Arrays {
                 boolean overflow = (shift >= maxWidth * 32) || (outBits + shift > maxWidth * 32);
                 overflowHolder[0] = overflow;
                 return ((shift + scale) < 63 ?
-                        valueOf(out << shift) :
-                        lshift(valueOf(out), (int) shift, maxWidth));
+                        valueOf(out << shift, maxWidth) :
+                        lshift(valueOf(out, maxWidth), (int) shift, maxWidth));
             }
             int outBits = 64 - Long.numberOfLeadingZeros(out);
             boolean overflow = (outBits > maxWidth * 32);
             overflowHolder[0] = overflow;
-            return valueOf(out);
+            return valueOf(out, maxWidth);
         }
 
         final int lplaces = lo * exp;

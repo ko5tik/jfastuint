@@ -271,7 +271,7 @@ public final class UInt128 extends UInt<UInt128> {
   }
 
   public static UInt128 mutable(final long v) {
-    return mutable(Arrays.valueOf(v));
+    return new UInt128(Arrays.valueOf(v, MAX_WIDTH), false);
   }
 
   UInt128(final int[] ints, final boolean overflow) {

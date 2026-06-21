@@ -272,7 +272,7 @@ public final class UInt256 extends UInt<UInt256> {
   }
 
   public static UInt256 mutable(final long v) {
-    return mutable(Arrays.valueOf(v));
+    return new UInt256(Arrays.valueOf(v, MAX_WIDTH), false);
   }
 
   UInt256(final int[] ints, final boolean overflow) {
