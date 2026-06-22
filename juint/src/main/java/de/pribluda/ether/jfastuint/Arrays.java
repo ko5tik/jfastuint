@@ -32,17 +32,13 @@ final class Arrays {
     private static BigInteger BIG_INT = BigInteger.valueOf(LONG);
 
     static final class Scratchpad {
-        final int[] a = new int[128];
-        final int[] b = new int[128];
-        final int[] c = new int[128];
-        final int[] d = new int[128];
-        final int[] quo = new int[128];
-        final int[] rem = new int[128];
-        final int[] div = new int[128];
-        final int[] tempAdd = new int[128];
-        final int[] tempMul = new int[128];
-        final int[] product = new int[128];
-        final int[] productClean = new int[128];
+        final int[] a = new int[16];
+        final int[] b = new int[16];
+        final int[] c = new int[16];
+        final int[] d = new int[16];
+        final int[] quo = new int[16];
+        final int[] rem = new int[16];
+        final int[] product = new int[16];
         final int[] tempRes8 = new int[8];
         final int[] tempRes16 = new int[16];
         final int[] a4 = new int[4];
@@ -55,11 +51,11 @@ final class Arrays {
         final int[] d8 = new int[8];
         final int[] r4 = new int[4];
         final int[] r8 = new int[8];
-        final int[] divA = new int[128];
-        final int[] divB = new int[128];
-        final int[] divQuo = new int[128];
-        final int[] divRem = new int[128];
-        final int[] divScr = new int[128];
+        final int[] divA = new int[16];
+        final int[] divB = new int[16];
+        final int[] divQuo = new int[32];
+        final int[] divRem = new int[32];
+        final int[] divScr = new int[16];
     }
 
     static final ThreadLocal<Scratchpad> SCRATCH = ThreadLocal.withInitial(Scratchpad::new);
@@ -673,7 +669,6 @@ final class Arrays {
         Scratchpad pad = SCRATCH.get();
         java.util.Arrays.fill(pad.quo, 0);
         java.util.Arrays.fill(pad.rem, 0);
-        java.util.Arrays.fill(pad.div, 0);
         java.util.Arrays.fill(pad.d, 0);
 
         int otherEnd = other.length - 1;
@@ -692,7 +687,7 @@ final class Arrays {
             Division.div(ints, ints.length, divisor, pad.quo, pad.rem, pad.divA, pad.divQuo, pad.divRem);
             qints = ints.length - 1;
         } else {
-            Division.div(ints, ints.length, pad.d, otherActiveLen, pad.quo, pad.rem, pad.div, pad.divA, pad.divB, pad.divQuo, pad.divRem, pad.divScr);
+            Division.div(ints, ints.length, pad.d, otherActiveLen, pad.quo, pad.rem, pad.divA, pad.divB, pad.divQuo, pad.divRem, pad.divScr);
             int places = Integer.numberOfLeadingZeros(pad.d[otherActiveLen - 1]);
             int remLen = ints.length + 1;
             if (0 < places && places > Integer.numberOfLeadingZeros(ints[ints.length - 1])) {
@@ -819,7 +814,6 @@ final class Arrays {
 
         java.util.Arrays.fill(pad.quo, 0);
         java.util.Arrays.fill(pad.rem, 0);
-        java.util.Arrays.fill(pad.div, 0);
 
         if (modActiveLen == 1) {
             Division.div(pad.a, activeLen, pad.d[0], pad.quo, pad.rem, pad.divA, pad.divQuo, pad.divRem);
@@ -832,7 +826,7 @@ final class Arrays {
             int copyLimit = Math.min(2, val.length);
             System.arraycopy(pad.rem, 0, val, 0, copyLimit);
         } else {
-            Division.div(pad.a, activeLen, pad.d, modActiveLen, pad.quo, pad.rem, pad.div, pad.divA, pad.divB, pad.divQuo, pad.divRem, pad.divScr);
+            Division.div(pad.a, activeLen, pad.d, modActiveLen, pad.quo, pad.rem, pad.divA, pad.divB, pad.divQuo, pad.divRem, pad.divScr);
             java.util.Arrays.fill(val, 0);
             int copyLimit = Math.min(modActiveLen, val.length);
             System.arraycopy(pad.rem, 0, val, 0, copyLimit);
@@ -857,7 +851,7 @@ final class Arrays {
         mModInPlace(ints, mod);
 
         Scratchpad pad = SCRATCH.get();
-        int[] tempAdd = pad.tempAdd;
+        int[] tempAdd = pad.product;
         java.util.Arrays.fill(tempAdd, 0);
         System.arraycopy(add, 0, tempAdd, 0, add.length);
         mModInPlace(tempAdd, mod);
@@ -881,7 +875,7 @@ final class Arrays {
         mModInPlace(ints, mod);
 
         Scratchpad pad = SCRATCH.get();
-        int[] tempMul = pad.tempMul;
+        int[] tempMul = pad.b;
         java.util.Arrays.fill(tempMul, 0);
         System.arraycopy(mul, 0, tempMul, 0, mul.length);
         mModInPlace(tempMul, mod);

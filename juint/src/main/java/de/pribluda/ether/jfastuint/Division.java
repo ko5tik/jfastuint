@@ -63,7 +63,7 @@ final class Division {
     rem[1] = revRem[aLen - 1];
   }
 
-  static void div(final int[] a, final int aLen, final int[] b, final int bLen, final int[] quo, final int[] rem, final int[] divScratch, final int[] revA, final int[] revB, final int[] revQuo, final int[] revRem, final int[] revDivScratch) {
+  static void div(final int[] a, final int aLen, final int[] b, final int bLen, final int[] quo, final int[] rem, final int[] revA, final int[] revB, final int[] revQuo, final int[] revRem, final int[] revDivScratch) {
     reverse(a, aLen, revA);
     reverse(b, bLen, revB);
     int places = Integer.numberOfLeadingZeros(revB[0]);
