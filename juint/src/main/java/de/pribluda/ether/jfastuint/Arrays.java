@@ -55,6 +55,11 @@ final class Arrays {
         final int[] d8 = new int[8];
         final int[] r4 = new int[4];
         final int[] r8 = new int[8];
+        final int[] divA = new int[128];
+        final int[] divB = new int[128];
+        final int[] divQuo = new int[128];
+        final int[] divRem = new int[128];
+        final int[] divScr = new int[128];
     }
 
     static final ThreadLocal<Scratchpad> SCRATCH = ThreadLocal.withInitial(Scratchpad::new);
@@ -680,14 +685,14 @@ final class Arrays {
 
         int qints;
         if (otherActiveLen == 1) {
-            Division.div(ints, ints.length, pad.d[0], pad.quo, pad.rem);
+            Division.div(ints, ints.length, pad.d[0], pad.quo, pad.rem, pad.divA, pad.divQuo, pad.divRem);
             qints = ints.length;
         } else if (otherActiveLen == 2) {
             final long divisor = ((pad.d[1] & LONG) << 32) | (pad.d[0] & LONG);
-            Division.div(ints, ints.length, divisor, pad.quo, pad.rem);
+            Division.div(ints, ints.length, divisor, pad.quo, pad.rem, pad.divA, pad.divQuo, pad.divRem);
             qints = ints.length - 1;
         } else {
-            Division.div(ints, ints.length, pad.d, otherActiveLen, pad.quo, pad.rem, pad.div);
+            Division.div(ints, ints.length, pad.d, otherActiveLen, pad.quo, pad.rem, pad.div, pad.divA, pad.divB, pad.divQuo, pad.divRem, pad.divScr);
             int places = Integer.numberOfLeadingZeros(pad.d[otherActiveLen - 1]);
             int remLen = ints.length + 1;
             if (0 < places && places > Integer.numberOfLeadingZeros(ints[ints.length - 1])) {
@@ -817,17 +822,17 @@ final class Arrays {
         java.util.Arrays.fill(pad.div, 0);
 
         if (modActiveLen == 1) {
-            Division.div(pad.a, activeLen, pad.d[0], pad.quo, pad.rem);
+            Division.div(pad.a, activeLen, pad.d[0], pad.quo, pad.rem, pad.divA, pad.divQuo, pad.divRem);
             java.util.Arrays.fill(val, 0);
             val[0] = pad.rem[0];
         } else if (modActiveLen == 2) {
             final long divisor = ((pad.d[1] & LONG) << 32) | (pad.d[0] & LONG);
-            Division.div(pad.a, activeLen, divisor, pad.quo, pad.rem);
+            Division.div(pad.a, activeLen, divisor, pad.quo, pad.rem, pad.divA, pad.divQuo, pad.divRem);
             java.util.Arrays.fill(val, 0);
             int copyLimit = Math.min(2, val.length);
             System.arraycopy(pad.rem, 0, val, 0, copyLimit);
         } else {
-            Division.div(pad.a, activeLen, pad.d, modActiveLen, pad.quo, pad.rem, pad.div);
+            Division.div(pad.a, activeLen, pad.d, modActiveLen, pad.quo, pad.rem, pad.div, pad.divA, pad.divB, pad.divQuo, pad.divRem, pad.divScr);
             java.util.Arrays.fill(val, 0);
             int copyLimit = Math.min(modActiveLen, val.length);
             System.arraycopy(pad.rem, 0, val, 0, copyLimit);
@@ -979,18 +984,18 @@ final class Arrays {
         java.util.Arrays.fill(a, 0);
         System.arraycopy(ints, 0, a, 0, maxWidth);
 
-        boolean[] overflowHolder = new boolean[1];
+        boolean overflowVal = false;
 
         int[] resultArr;
         if (exp == 2) {
             java.util.Arrays.fill(res, 0);
             System.arraycopy(a, 0, res, 0, maxWidth);
-            overflowHolder[0] = mMultiply(res, res);
+            overflowVal = mMultiply(res, res);
             resultArr = res;
         } else {
             long shift = (long) lo * exp;
             if (Integer.MAX_VALUE < shift) {
-                overflowHolder[0] = true;
+                overflowVal = true;
                 java.util.Arrays.fill(res, 0);
                 resultArr = res;
             } else {
@@ -1001,7 +1006,7 @@ final class Arrays {
                 final int bits = bitLength(a);
                 if (bits == 1) {
                     boolean overflow = (lo * exp >= maxWidth * 32);
-                    overflowHolder[0] = overflow;
+                    overflowVal = overflow;
                     java.util.Arrays.fill(res, 0);
                     res[0] = 1;
                     if (0 < lo) {
@@ -1026,7 +1031,7 @@ final class Arrays {
                         if (0 < lo) {
                             int outBits = 64 - Long.numberOfLeadingZeros(outVal);
                             boolean overflow = (shift >= maxWidth * 32) || (outBits + shift > maxWidth * 32);
-                            overflowHolder[0] = overflow;
+                            overflowVal = overflow;
                             if ((shift + scale) < 63) {
                                 long val = outVal << shift;
                                 res[0] = (int) val;
@@ -1040,7 +1045,7 @@ final class Arrays {
                         } else {
                             int outBits = 64 - Long.numberOfLeadingZeros(outVal);
                             boolean overflow = (outBits > maxWidth * 32);
-                            overflowHolder[0] = overflow;
+                            overflowVal = overflow;
                             res[0] = (int) outVal;
                         }
                         resultArr = res;
@@ -1078,7 +1083,7 @@ final class Arrays {
                             }
                             mShiftLeft(out, lplaces);
                         }
-                        overflowHolder[0] = overflow;
+                        overflowVal = overflow;
                         resultArr = out;
                     }
                 }
@@ -1087,7 +1092,7 @@ final class Arrays {
 
         java.util.Arrays.fill(ints, 0);
         System.arraycopy(resultArr, 0, ints, 0, maxWidth);
-        return overflowHolder[0];
+        return overflowVal;
     }
 
     static int[] sqrt(final int[] a) {

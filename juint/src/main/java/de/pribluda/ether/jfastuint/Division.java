@@ -11,6 +11,12 @@ final class Division {
     return dst;
   }
 
+  private static void reverse(final int[] src, final int len, final int[] dst) {
+    for (int i = 0; i < len; i++) {
+      dst[i] = src[len - 1 - i];
+    }
+  }
+
   private static int[] reverse(final int[] src, final int len) {
     int[] dst = new int[len];
     for (int i = 0; i < len; i++) {
@@ -38,10 +44,8 @@ final class Division {
     return new int[][]{reverse(qr[0]), reverse(qr[1])};
   }
 
-  static void div(final int[] a, final int aLen, final int b, final int[] quo, final int[] remOut) {
-    int[] revA = reverse(a, aLen);
-    int[] revQuo = new int[128];
-    int[] revRem = new int[128];
+  static void div(final int[] a, final int aLen, final int b, final int[] quo, final int[] remOut, final int[] revA, final int[] revQuo, final int[] revRem) {
+    reverse(a, aLen, revA);
     divBE(revA, aLen, b, revQuo, revRem);
     for (int i = 0; i < aLen; i++) {
       quo[i] = revQuo[aLen - 1 - i];
@@ -49,10 +53,8 @@ final class Division {
     remOut[0] = revRem[0];
   }
 
-  static void div(final int[] a, final int aLen, long b, final int[] quo, final int[] rem) {
-    int[] revA = reverse(a, aLen);
-    int[] revQuo = new int[128];
-    int[] revRem = new int[128];
+  static void div(final int[] a, final int aLen, long b, final int[] quo, final int[] rem, final int[] revA, final int[] revQuo, final int[] revRem) {
+    reverse(a, aLen, revA);
     divBE(revA, aLen, b, revQuo, revRem);
     for (int i = 0; i < aLen - 1; i++) {
       quo[i] = revQuo[aLen - 2 - i];
@@ -61,18 +63,15 @@ final class Division {
     rem[1] = revRem[aLen - 1];
   }
 
-  static void div(final int[] a, final int aLen, final int[] b, final int bLen, final int[] quo, final int[] rem, final int[] divScratch) {
-    int[] revA = reverse(a, aLen);
-    int[] revB = reverse(b, bLen);
+  static void div(final int[] a, final int aLen, final int[] b, final int bLen, final int[] quo, final int[] rem, final int[] divScratch, final int[] revA, final int[] revB, final int[] revQuo, final int[] revRem, final int[] revDivScratch) {
+    reverse(a, aLen, revA);
+    reverse(b, bLen, revB);
     int places = Integer.numberOfLeadingZeros(revB[0]);
     int remLen = aLen + 1;
     if (0 < places && places > Integer.numberOfLeadingZeros(revA[0])) {
       remLen = aLen + 2;
     }
     int qints = remLen - bLen;
-    int[] revQuo = new int[128];
-    int[] revRem = new int[128];
-    int[] revDivScratch = new int[128];
     divBE(revA, aLen, revB, bLen, revQuo, revRem, revDivScratch);
     for (int i = 0; i < qints; i++) {
       quo[i] = revQuo[qints - 1 - i];
