@@ -11,12 +11,9 @@ public abstract class UInt<T extends UInt>
   boolean overflow;
 
   public final boolean overflow() { return overflow; }
-  public final boolean getOverflow() { return overflow; }
 
   @SuppressWarnings("unchecked")
   public final T reset() { this.overflow = false; return (T) this; }
-  @SuppressWarnings("unchecked")
-  public final T mReset() { this.overflow = false; return (T) this; }
 
   /**
    * Sets the value of this unsigned integer to the value of the other unsigned integer,
@@ -336,12 +333,7 @@ public abstract class UInt<T extends UInt>
    * Count the number of bits required to represent this number in binary.
    */
   public final int bitLength() {
-    int firstNonZero = ints.length - 1;
-    while (firstNonZero >= 0 && ints[firstNonZero] == 0) {
-      firstNonZero--;
-    }
-    if (firstNonZero < 0) return 0;
-    return (firstNonZero * 32) + (32 - Integer.numberOfLeadingZeros(ints[firstNonZero]));
+      return Arrays.bitLength(ints);
   }
 
   /**
@@ -355,12 +347,7 @@ public abstract class UInt<T extends UInt>
    * Return the index of the right-most set bit, or {@code -1}.
    */
   public final int getLowestSetBit() {
-    for(int i = 0; i < ints.length; i++) {
-      if(ints[i] != 0) {
-        return i * 32 + Integer.numberOfTrailingZeros(ints[i]);
-      }
-    }
-    return -1;
+      return Arrays.getLowestSetBit(ints);
   }
 
   /**
