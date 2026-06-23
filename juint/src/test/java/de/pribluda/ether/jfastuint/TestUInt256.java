@@ -80,4 +80,20 @@ public class TestUInt256 extends Properties<UInt256> {
     assertFalse(res3.overflow());
     assertEquals(one.shiftLeft(240), res3);
   }
+
+  @Test
+  public void testSetFromShorter() {
+    UInt256 u256 = new UInt256("123456789012345678901234567890");
+    UInt128 u128 = new UInt128("9876543210");
+    u256.set(u128);
+    assertEquals(new UInt256("9876543210"), u256);
+    assertFalse(u256.overflow());
+
+    // Verify all higher elements are zeroed out (yeroes)
+    // UInt256 ints has length 8. UInt128 ints has length 4.
+    // So indices 4 to 7 must be zero.
+    for (int i = 4; i < 8; i++) {
+      assertEquals(0, u256.ints[i]);
+    }
+  }
 }

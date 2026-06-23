@@ -18,6 +18,36 @@ public abstract class UInt<T extends UInt>
   @SuppressWarnings("unchecked")
   public final T mReset() { this.overflow = false; return (T) this; }
 
+  /**
+   * Sets the value of this unsigned integer to the value of the other unsigned integer,
+   * copying the value and the overflow state.
+   * Modifies the backing array in-place. If the other integer is shorter, the remaining
+   * most-significant words are zeroed. If the other integer is longer, it is truncated,
+   * setting the overflow flag if any truncated words are non-zero.
+   *
+   * @param other the unsigned integer to copy from.
+   * @return this object for chaining.
+   */
+  @SuppressWarnings("unchecked")
+  public final T set(final UInt<?> other) {
+    final int minLen = Math.min(this.ints.length, other.ints.length);
+    System.arraycopy(other.ints, 0, this.ints, 0, minLen);
+    if (this.ints.length > other.ints.length) {
+      java.util.Arrays.fill(this.ints, other.ints.length, this.ints.length, 0);
+      this.overflow = other.overflow;
+    } else {
+      boolean extraOverflow = false;
+      for (int i = this.ints.length; i < other.ints.length; i++) {
+        if (other.ints[i] != 0) {
+          extraOverflow = true;
+          break;
+        }
+      }
+      this.overflow = other.overflow || extraOverflow;
+    }
+    return (T) this;
+  }
+
   /* toString */
   static final int DEFAULT_RADIX = 10;
 

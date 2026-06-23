@@ -77,4 +77,19 @@ public class TestUInt128 extends Properties<UInt128> {
     assertFalse(res3.overflow());
     assertEquals(one.shiftLeft(120), res3);
   }
+
+  @Test
+  public void testSetFromLonger() {
+    UInt128 u128 = new UInt128("9876543210");
+    // Fits within 128 bits
+    UInt256 u256Fits = new UInt256("1234567890");
+    u128.set(u256Fits);
+    assertEquals(new UInt128("1234567890"), u128);
+    assertFalse(u128.overflow());
+
+    // Exceeds 128 bits (1<<130)
+    UInt256 u256Overflow = UInt256.ONE.shiftLeft(130);
+    u128.set(u256Overflow);
+    assertTrue(u128.overflow());
+  }
 }

@@ -39,6 +39,8 @@ final class Arrays {
         final int[] quo = new int[16];
         final int[] rem = new int[16];
         final int[] product = new int[16];
+        final int[] tempAdd = product;
+        final int[] tempMul = b;
         final int[] tempRes8 = new int[8];
         final int[] tempRes16 = new int[16];
         final int[] a4 = new int[4];
@@ -851,7 +853,7 @@ final class Arrays {
         mModInPlace(ints, mod);
 
         Scratchpad pad = SCRATCH.get();
-        int[] tempAdd = pad.product;
+        int[] tempAdd = pad.tempAdd;
         java.util.Arrays.fill(tempAdd, 0);
         System.arraycopy(add, 0, tempAdd, 0, add.length);
         mModInPlace(tempAdd, mod);
@@ -875,7 +877,7 @@ final class Arrays {
         mModInPlace(ints, mod);
 
         Scratchpad pad = SCRATCH.get();
-        int[] tempMul = pad.b;
+        int[] tempMul = pad.tempMul;
         java.util.Arrays.fill(tempMul, 0);
         System.arraycopy(mul, 0, tempMul, 0, mul.length);
         mModInPlace(tempMul, mod);

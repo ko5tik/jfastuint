@@ -129,6 +129,25 @@ public abstract class Properties<T extends UInt<T>> {
   }
 
   @Test
+  public void testSet() {
+    for (int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      T val1 = construct(x.toIntArray());
+      T val2 = construct(y.toIntArray());
+      val1.reset();
+      val2.reset();
+
+      if (rnd.nextBoolean()) {
+        val2.mAdd(max); // trigger overflow
+      }
+
+      T res = val1.set(val2);
+      assertEquals(val2, val1);
+      assertEquals(val2.overflow(), val1.overflow());
+      assertTrue(res == val1);
+    }
+  }
+
+  @Test
   public void longCtorInvariant() {
     assertEquals(construct(new int[]{-1, -1}), construct(-1L));
     assertEquals(zero,                         construct(0L));
