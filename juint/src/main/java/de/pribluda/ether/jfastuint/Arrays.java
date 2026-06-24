@@ -58,6 +58,8 @@ final class Arrays {
         final int[] divQuo = new int[32];
         final int[] divRem = new int[32];
         final int[] divScr = new int[16];
+        // Scratchpad array for 64‑bit accumulator used in multiplication to avoid allocations
+        final long[] longAcc = new long[16];
     }
 
     static final ThreadLocal<Scratchpad> SCRATCH = ThreadLocal.withInitial(Scratchpad::new);
@@ -586,59 +588,35 @@ final class Arrays {
 
     static boolean mMultiply(final int[] ints, final int[] other) {
         int maxWidth = ints.length;
-        int alen = maxWidth;
-        int blen = Math.min(other.length, maxWidth);
-
         Scratchpad pad = SCRATCH.get();
-        int[] product = pad.product;
-
-        java.util.Arrays.fill(product, 0, maxWidth, 0);
-
+        // Clear the scratchpad accumulator
+        java.util.Arrays.fill(pad.longAcc, 0L);
         boolean overflow = false;
-        for (int i = 0; i < alen; i++) {
+        // First pass: accumulate raw 64‑bit products into scratchpad longAcc
+        for (int i = 0; i < ints.length; i++) {
             long aVal = ints[i] & LONG;
             if (aVal == 0) continue;
-            long carry = 0;
-            for (int j = 0; j < blen; j++) {
-                int targetIdx = i + j;
-                if (targetIdx < maxWidth) {
-                    long prod = aVal * (other[j] & LONG) + (product[targetIdx] & LONG) + carry;
-                    product[targetIdx] = (int) prod;
-                    carry = prod >>> 32;
+            for (int j = 0; j < other.length; j++) {
+                long bVal = other[j] & LONG;
+                if (bVal == 0) continue;
+                int k = i + j;
+                if (k < maxWidth) {
+                    pad.longAcc[k] += aVal * bVal;
                 } else {
-                    if (carry != 0) {
-                        overflow = true;
-                        carry = 0;
-                    }
-                    if (other[j] != 0) {
-                        overflow = true;
-                    }
-                }
-            }
-            int carryIdx = i + blen;
-            while (carry != 0) {
-                if (carryIdx < maxWidth) {
-                    long sum = (product[carryIdx] & LONG) + carry;
-                    product[carryIdx] = (int) sum;
-                    carry = sum >>> 32;
-                    carryIdx++;
-                } else {
-                    overflow = true;
-                    break;
+                    overflow = true; // overflow beyond allocated width
                 }
             }
         }
-
-        if (other.length > maxWidth) {
-            for (int i = maxWidth; i < other.length; i++) {
-                if (other[i] != 0) {
-                    overflow = true;
-                    break;
-                }
-            }
+        // Second pass: normalize carries back into ints
+        long carry = 0;
+        for (int k = 0; k < maxWidth; k++) {
+            long sum = pad.longAcc[k] + carry;
+            ints[k] = (int) sum;
+            carry = sum >>> 32;
         }
-
-        System.arraycopy(product, 0, ints, 0, maxWidth);
+        if (carry != 0) {
+            overflow = true;
+        }
         return overflow;
     }
 

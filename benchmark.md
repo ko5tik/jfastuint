@@ -66,3 +66,19 @@ The following JMH benchmarks compare **mutable**, **immutable** `UInt256` implem
 ---
 
 *Generated on 2026‑06‑24.*
+
+### Deep Multiply (per bit width)
+
+| Bit Width | Variant | Throughput (ops / µs) | GC Alloc Rate (MB / s) | GC Alloc Rate Norm (B / op) | GC Count |
+|-----------|---------|----------------------|-----------------------|----------------------------|----------|
+| 128 | `BigInteger` | 12.0 ± 12.0 | 666 ± 651 | 88.0 ± 0.0 B/op | 15 |
+| 128 | `UInt256` immutable | 6.0 ± 3.0 | 267 ± 115 | 72.0 ± 0.01 B/op | 14 |
+| 128 | `UInt256` mutable | 8.0 ± 4.0 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
+| 256 | `BigInteger` | 9.0 ± 2.0 | 672 ± 122 | 120.0 ± 0.0 B/op | 23 |
+| 256 | `UInt256` immutable | 6.0 ± 3.0 | 176 ± 115 | 72.0 ± 0.02 B/op | 10 |
+| 256 | `UInt256` mutable | 5.0 ± 1.0 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
+| 512 | `BigInteger` | 4.0 ± 1.0 | 417 ± 142 | 184.0 ± 0.0 B/op | 15 |
+| 512 | `UInt256` immutable | 4.0 ± 2.0 | 178 ± 304 | 72.0 ± 0.01 B/op | 10 |
+| 512 | `UInt256` mutable | 5.0 ± 1.0 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
+
+---
