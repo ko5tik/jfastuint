@@ -1084,12 +1084,10 @@ final class Arrays {
 
         Scratchpad pad = SCRATCH.get();
         int[] op = pad.a;
-        int[] one = pad.b;
-        int[] sum = pad.c;
+        int[] nextY = pad.b;
 
         java.util.Arrays.fill(op, 0);
-        java.util.Arrays.fill(one, 0);
-        java.util.Arrays.fill(sum, 0);
+        java.util.Arrays.fill(nextY, 0);
 
         int targetWidth = ints.length;
         System.arraycopy(ints, 0, op, 0, targetWidth);
@@ -1099,27 +1097,20 @@ final class Arrays {
             java.util.Arrays.fill(ints, 0);
             return false;
         }
-        if (bit % 2 == 0) {
-            bit -= 2;
-        } else {
-            bit -= 1;
-        }
-        mSetBit(one, bit);
 
         java.util.Arrays.fill(ints, 0);
+        mSetBit(ints, (bit + 1) / 2);
 
-        while (!isZero(one)) {
-            System.arraycopy(ints, 0, sum, 0, targetWidth);
-            mAdd(sum, one);
+        while (true) {
+            System.arraycopy(op, 0, nextY, 0, targetWidth);
+            mDivide(nextY, ints);
+            mAdd(nextY, ints);
+            mShiftRight(nextY, 1);
 
-            if (compareActive(op, sum) >= 0) {
-                mSubtract(op, sum);
-                mShiftRight(ints, 1);
-                mAdd(ints, one);
-            } else {
-                mShiftRight(ints, 1);
+            if (compareActive(nextY, ints) >= 0) {
+                break;
             }
-            mShiftRight(one, 2);
+            System.arraycopy(nextY, 0, ints, 0, targetWidth);
         }
 
         return false;
