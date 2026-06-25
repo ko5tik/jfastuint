@@ -7,7 +7,7 @@ not make garbage. Mutable objects are the best can help to reduce GC pressure an
 Another source of grieg, are small arrays – array is an object and produces considerable overhead.  Using 
 a big partitioned array can help keep memory usage low. 
 
-Due to excessive rewriting of the code, it is unlikely that it will be merged back.  But binary interface
+Due to excessive rewriting of the code, it is unlikely that it will be merged back.  But the binary interface 
 stays the same. All licensing conditions from the original project apply.
 
 ## Orginal project
@@ -16,11 +16,11 @@ See original documentation [here](https://github.com/nervous-systems/java-unsign
 
 ## Performance
 
-Needs to be investigated. 
+Needs to be investigated.  Work in progress.  See [current benchmarks](./benchmark.md)
 
 ## Building and Releasing
 
-To compile and install the project locally (without signing the artifacts, and installing into the local repository):
+To compile and install the project locally (without signing the artifacts and installing into the local repository):
 ```bash
 mvn clean install
 ```

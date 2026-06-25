@@ -586,6 +586,8 @@ final class Arrays {
         return out;
     }
 
+    //  uses grammar school multiplication - for our data width (up to 256)  other methods
+    //  are slower
     static boolean mMultiply(final int[] ints, final int[] other) {
         int maxWidth = ints.length;
         Scratchpad pad = SCRATCH.get();
