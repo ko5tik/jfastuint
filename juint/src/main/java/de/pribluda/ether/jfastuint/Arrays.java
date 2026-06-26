@@ -662,14 +662,14 @@ final class Arrays {
 
         int qints;
         if (otherActiveLen == 1) {
-            Division.div(ints, ints.length, pad.d[0], pad.quo, pad.rem, pad.divA, pad.divQuo, pad.divRem);
+            Division.div(ints, ints.length, pad.d[0], pad.quo, pad.rem);
             qints = ints.length;
         } else if (otherActiveLen == 2) {
             final long divisor = ((pad.d[1] & LONG) << 32) | (pad.d[0] & LONG);
-            Division.div(ints, ints.length, divisor, pad.quo, pad.rem, pad.divA, pad.divQuo, pad.divRem);
+            Division.div(ints, ints.length, divisor, pad.quo, pad.divRem);
             qints = ints.length - 1;
         } else {
-            Division.div(ints, ints.length, pad.d, otherActiveLen, pad.quo, pad.rem, pad.divA, pad.divB, pad.divQuo, pad.divRem, pad.divScr);
+            Division.div(ints, ints.length, pad.d, otherActiveLen, pad.quo, pad.divRem, pad.divScr);
             int places = Integer.numberOfLeadingZeros(pad.d[otherActiveLen - 1]);
             int remLen = ints.length + 1;
             if (0 < places && places > Integer.numberOfLeadingZeros(ints[ints.length - 1])) {
@@ -798,20 +798,20 @@ final class Arrays {
         java.util.Arrays.fill(pad.rem, 0);
 
         if (modActiveLen == 1) {
-            Division.div(pad.a, activeLen, pad.d[0], pad.quo, pad.rem, pad.divA, pad.divQuo, pad.divRem);
+            Division.div(pad.a, activeLen, pad.d[0], pad.quo, pad.rem);
             java.util.Arrays.fill(val, 0);
             val[0] = pad.rem[0];
         } else if (modActiveLen == 2) {
             final long divisor = ((pad.d[1] & LONG) << 32) | (pad.d[0] & LONG);
-            Division.div(pad.a, activeLen, divisor, pad.quo, pad.rem, pad.divA, pad.divQuo, pad.divRem);
+            Division.div(pad.a, activeLen, divisor, pad.quo, pad.divRem);
             java.util.Arrays.fill(val, 0);
             int copyLimit = Math.min(2, val.length);
-            System.arraycopy(pad.rem, 0, val, 0, copyLimit);
+            System.arraycopy(pad.divRem, 0, val, 0, copyLimit);
         } else {
-            Division.div(pad.a, activeLen, pad.d, modActiveLen, pad.quo, pad.rem, pad.divA, pad.divB, pad.divQuo, pad.divRem, pad.divScr);
+            Division.div(pad.a, activeLen, pad.d, modActiveLen, pad.quo, pad.divRem, pad.divScr);
             java.util.Arrays.fill(val, 0);
             int copyLimit = Math.min(modActiveLen, val.length);
-            System.arraycopy(pad.rem, 0, val, 0, copyLimit);
+            System.arraycopy(pad.divRem, 0, val, 0, copyLimit);
         }
     }
 

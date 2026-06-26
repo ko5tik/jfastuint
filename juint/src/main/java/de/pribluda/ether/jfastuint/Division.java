@@ -1,233 +1,208 @@
 package de.pribluda.ether.jfastuint;
 
+/**
+ * High-performance division algorithms implemented directly for Little-Endian array representations.
+ * Contains single-word, double-word (long), and multi-word array division routines utilizing
+ * Knuth's Division Algorithm D (from TAOCP Vol 2) optimized to avoid array reversals.
+ */
 final class Division {
-  private static long LONG = 0xffffffffL;
+  private static final long LONG = 0xffffffffL;
 
-  private static int[] reverse(final int[] src) {
-    int[] dst = new int[src.length];
-    for (int i = 0; i < src.length; i++) {
-      dst[i] = src[src.length - 1 - i];
-    }
-    return dst;
-  }
-
-  private static void reverse(final int[] src, final int len, final int[] dst) {
-    for (int i = 0; i < len; i++) {
-      dst[i] = src[len - 1 - i];
-    }
-  }
-
-  private static int[] reverse(final int[] src, final int len) {
-    int[] dst = new int[len];
-    for (int i = 0; i < len; i++) {
-      dst[i] = src[len - 1 - i];
-    }
-    return dst;
-  }
-
-  static int[][] div(final int[] a, final int b) {
-    int[] revA = reverse(a);
-    int[][] qr = divBE(revA, b);
-    return new int[][]{reverse(qr[0]), reverse(qr[1])};
-  }
-
-  static int[][] div(final int[] a, long b) {
-    int[] revA = reverse(a);
-    int[][] qr = divBE(revA, b);
-    return new int[][]{reverse(qr[0]), reverse(qr[1])};
-  }
-
-  static int[][] div(final int[] a, final int[] b) {
-    int[] revA = reverse(a);
-    int[] revB = reverse(b);
-    int[][] qr = divBE(revA, revB);
-    return new int[][]{reverse(qr[0]), reverse(qr[1])};
-  }
-
-  static void div(final int[] a, final int aLen, final int b, final int[] quo, final int[] remOut, final int[] revA, final int[] revQuo, final int[] revRem) {
-    reverse(a, aLen, revA);
-    divBE(revA, aLen, b, revQuo, revRem);
-    for (int i = 0; i < aLen; i++) {
-      quo[i] = revQuo[aLen - 1 - i];
-    }
-    remOut[0] = revRem[0];
-  }
-
-  static void div(final int[] a, final int aLen, long b, final int[] quo, final int[] rem, final int[] revA, final int[] revQuo, final int[] revRem) {
-    reverse(a, aLen, revA);
-    divBE(revA, aLen, b, revQuo, revRem);
-    for (int i = 0; i < aLen - 1; i++) {
-      quo[i] = revQuo[aLen - 2 - i];
-    }
-    rem[0] = revRem[aLen];
-    rem[1] = revRem[aLen - 1];
-  }
-
-  static void div(final int[] a, final int aLen, final int[] b, final int bLen, final int[] quo, final int[] rem, final int[] revA, final int[] revB, final int[] revQuo, final int[] revRem, final int[] revDivScratch) {
-    reverse(a, aLen, revA);
-    reverse(b, bLen, revB);
-    int places = Integer.numberOfLeadingZeros(revB[0]);
-    int remLen = aLen + 1;
-    if (0 < places && places > Integer.numberOfLeadingZeros(revA[0])) {
-      remLen = aLen + 2;
-    }
-    int qints = remLen - bLen;
-    divBE(revA, aLen, revB, bLen, revQuo, revRem, revDivScratch);
-    for (int i = 0; i < qints; i++) {
-      quo[i] = revQuo[qints - 1 - i];
-    }
-    for (int i = 0; i < bLen; i++) {
-      rem[i] = revRem[remLen - 1 - i];
-    }
-  }
-
-  static int[][] divBE(final int[] a, final int b) {
+  /**
+   * Performs in-place division of a multi-word Little-Endian dividend by a single 32-bit unsigned integer divisor.
+   * Runs right-to-left (most significant to least significant word) directly on the Little-Endian inputs.
+   *
+   * @param a      the dividend array in Little-Endian layout
+   * @param aLen   active length of the dividend array
+   * @param b      the 32-bit divisor (treated as unsigned)
+   * @param quo    output array where the quotient will be stored
+   * @param remOut output array of size 1 where the remainder will be stored
+   */
+  static void div(final int[] a, final int aLen, final int b, final int[] quo, final int[] remOut) {
     final long bl = b & LONG;
-
-    if(a.length == 1) {
-      final long al = a[0] & LONG;
-      return new int[][]{new int[]{(int)(al / bl)}, new int[]{(int)(al % bl)}};
-    }
-
-    final int[] quo  = java.util.Arrays.copyOf(a, a.length);
-    final int places = Integer.numberOfLeadingZeros(b);
-    int  rem         = a[0], alen = a.length;
-    final long reml  = rem & LONG;
-
-    if(reml < bl) {
-      quo[0] = 0;
-    } else {
-      quo[0] = (int)(reml / bl);
-      rem    = (int)(reml % bl);
-    }
-
-    while(0 < --alen) {
-      final long est = ((rem & LONG) << 32) | (a[a.length - alen] & LONG);
-      final int q;
-      if(0 <= est) {
-        q   = (int)(est / bl);
-        rem = (int)(est % bl);
+    long rem = 0;
+    // Process from most significant word (at index aLen - 1) down to least significant word (index 0)
+    for (int i = aLen - 1; i >= 0; i--) {
+      long dividend = (rem << 32) | (a[i] & LONG);
+      long q;
+      if (dividend >= 0) {
+        q = dividend / bl;
+        rem = dividend - q * bl;
       } else {
-        long tmp = divone(est, b & LONG);
-        q   = (int)(tmp & LONG);
-        rem = (int)(tmp >>> 32);
+        q = Long.divideUnsigned(dividend, bl);
+        rem = dividend - q * bl;
       }
-      quo[a.length - alen] = q;
+      quo[i] = (int) q;
     }
-
-    return new int[][]{quo, new int[]{0 < places ? rem % b : rem}};
+    remOut[0] = (int) rem;
   }
 
-  static int[][] divBE(final int[] a, long b) {
-    final int  alen = a.length;
-    final int[] quo = new int[alen - 1], rem = new int[alen + 1];
+  /**
+   * Performs in-place division of a multi-word Little-Endian dividend by a 64-bit unsigned long divisor.
+   * Uses Knuth's Division Algorithm D tailored for a 2-word (64-bit) divisor in Little-Endian layout.
+   *
+   * @param a      the dividend array in Little-Endian layout
+   * @param aLen   active length of the dividend array
+   * @param b      the 64-bit divisor (treated as unsigned)
+   * @param quo    output array where the quotient will be stored
+   * @param remOut output array where the remainder will be stored
+   */
+  static void div(final int[] a, final int aLen, long b, final int[] quo, final int[] remOut) {
+    java.util.Arrays.fill(remOut, 0, aLen + 2, 0);
+    java.util.Arrays.fill(quo, 0, aLen, 0);
 
-    System.arraycopy(a, 0, rem, 1, alen);
-
+    // Normalize divisor and dividend by shifting left so MSB of divisor is 1
     final int places = Long.numberOfLeadingZeros(b);
-    if(0 < places) {
-      lshunt(rem, places);
+    if (0 < places) {
+      copyshiftLE(a, aLen, remOut, places);
       b <<= places;
+    } else {
+      System.arraycopy(a, 0, remOut, 0, aLen);
     }
 
-    final int   dh = (int)(b >>> 32);
+    final int dh = (int)(b >>> 32);
     final long dhl = dh & LONG;
-    final int   dl = (int)(b & LONG);
+    final int dl = (int)(b & LONG);
 
+    // Main Knuth loop running from most significant quotient word down to least significant
     int qhat;
-    for(int i = 0; i < alen - 1; i++) {
-      if((qhat = D3(i, rem, dh, dhl, dl)) != 0) {
-        quo[i] = D4_D5(i, rem, dh, dl, qhat);
+    for (int i = aLen - 2; i >= 0; i--) {
+      if ((qhat = D3_long_LE(i, remOut, dh, dhl, dl)) != 0) {
+        quo[i] = D4_D5_long_LE(i, remOut, dh, dl, qhat);
       }
     }
 
-    if(0 < places) {
-      rshift(rem, places);
+    // Denormalize remainder
+    if (0 < places) {
+      rshiftLE(remOut, aLen + 1, places);
     }
-
-    return new int[][]{quo, rem};
   }
 
-  static int[][] divBE(final int[] a, final int[] b) {
-    final int places = Integer.numberOfLeadingZeros(b[0]);
-    final int[] div, rem;
+  /**
+   * Performs multi-precision division of two unsigned Little-Endian integers in-place.
+   * Implements Knuth's Division Algorithm D operating directly on Little-Endian layouts.
+   *
+   * @param a          the dividend array in Little-Endian layout
+   * @param aLen       active length of the dividend array
+   * @param b          the divisor array in Little-Endian layout
+   * @param bLen       active length of the divisor array
+   * @param quo        output array where the quotient will be stored
+   * @param remOut     output array where the remainder will be stored
+   * @param divScratch scratchpad array used during normalization of the divisor
+   */
+  static void div(final int[] a, final int aLen, final int[] b, final int bLen, final int[] quo, final int[] remOut, final int[] divScratch) {
+    // Normalization shift places based on leading zeros of divisor's most significant word
+    final int places = Integer.numberOfLeadingZeros(b[bLen - 1]);
+    final int[] activeDiv;
+    final int remLen;
 
-    if(0 < places) {
-      div = new int[b.length];
-      copyshift(b, 0, div, 0, places);
+    if (0 < places) {
+      activeDiv = divScratch;
+      java.util.Arrays.fill(divScratch, 0, bLen + 1, 0);
+      copyshiftLE(b, bLen, activeDiv, places);
 
-      if(places <= Integer.numberOfLeadingZeros(a[0])) {
-        rem = new int[a.length + 1];
-        copyshift(a, 0, rem, 1, places);
+      if (places <= Integer.numberOfLeadingZeros(a[aLen - 1])) {
+        remLen = aLen + 1;
+        java.util.Arrays.fill(remOut, 0, remLen + 1, 0);
+        copyshiftLE(a, aLen, remOut, places);
       } else {
-        rem            = new int[a.length + 2];
-        final int invp = 32 - places;
-        int c          = 0;
-        for(int i = 0; i < a.length; i++)
-          rem[i + 1] = (c << places) | ((c = a[i]) >>> invp);
-        rem[a.length + 1] = c << places;
+        remLen = aLen + 2;
+        java.util.Arrays.fill(remOut, 0, remLen + 1, 0);
+        copyshiftLE(a, aLen, remOut, places);
       }
     } else {
-      div = b;
-      rem = new int[a.length + 1];
-      System.arraycopy(a, 0, rem, 1, a.length);
+      activeDiv = b;
+      remLen = aLen + 1;
+      java.util.Arrays.fill(remOut, 0, remLen + 1, 0);
+      System.arraycopy(a, 0, remOut, 0, aLen);
     }
 
-    final int   qints = rem.length - b.length;
-    final int[] quo   = new int[qints];
+    final int qints = remLen - bLen;
+    java.util.Arrays.fill(quo, 0, qints + 1, 0);
 
-    final int  dh  = div[0];
-    final int  dl  = div[1];
+    final int dh = activeDiv[bLen - 1];
+    final int dl = activeDiv[bLen - 2];
     final long dhl = dh & LONG;
 
+    // Main Knuth loop running from most significant quotient word down to least significant
     int qhat;
-    for(int i = 0; i < qints; i++) {
-      if((qhat = D3(i, rem, dh, dhl, dl)) != 0) {
-        quo[i] = D4_D5(i, rem, div, qhat);
+    for (int i = qints - 1; i >= 0; i--) {
+      if ((qhat = D3_LE(i, remOut, bLen, dh, dhl, dl)) != 0) {
+        quo[i] = D4_D5_LE(i, remOut, activeDiv, qhat, bLen);
       }
     }
 
-    if(0 < places) {
-      rshift(rem, places);
+    // Denormalize remainder
+    if (0 < places) {
+      rshiftLE(remOut, remLen, places);
     }
-
-    return new int[][]{quo, rem};
   }
 
-  private static int D3(final int j, final int[] rem, final int dh, final long dhl, final int dl) {
+  /**
+   * Helper routine to copy an array while shifting left (for normalization) in Little-Endian layout.
+   */
+  private static void copyshiftLE(final int[] src, final int srcLen, final int[] dst, final int places) {
+    final int invplaces = 32 - places;
+    int carry = 0;
+    for (int i = 0; i < srcLen; i++) {
+      int val = src[i];
+      dst[i] = (val << places) | carry;
+      carry = val >>> invplaces;
+    }
+    dst[srcLen] = carry;
+  }
+
+  /**
+   * Helper routine to shift an array right in-place (for denormalization of remainder) in Little-Endian layout.
+   */
+  private static void rshiftLE(final int[] a, final int len, final int places) {
+    if (len == 0 || places == 0) return;
+    final int bits = places & 0x1F;
+    if (bits == 0) return;
+    final int invShift = 32 - bits;
+    for (int i = 0; i < len - 1; i++) {
+      a[i] = (a[i] >>> bits) | (a[i + 1] << invShift);
+    }
+    a[len - 1] >>>= bits;
+  }
+
+  /**
+   * Knuth step D3 for 64-bit divisor (long): Calculate quotient estimation qhat and remainder estimation qrem.
+   */
+  private static int D3_long_LE(final int i, final int[] rem, final int dh, final long dhl, final int dl) {
     int qhat, qrem;
     boolean correct = true;
-    final int nh    = rem[j];
-    final int nm    = rem[j + 1];
+    final int nh    = rem[i + 2];
+    final int nm    = rem[i + 1];
 
-    if(nh == dh) {
+    if (nh == dh) {
       qhat    = ~0;
       qrem    = nh + nm;
       correct = nh + 0x80000000 <= qrem + 0x80000000;
     } else {
       final long chunk = (((long)nh) << 32) | (nm & LONG);
-      if(0 <= chunk) {
-        qhat = (int)(chunk / dhl);
-        qrem = (int)(chunk - (qhat * dhl));
+      // Fast path: use simple JIT-optimized signed division for positive numbers
+      if (chunk >= 0) {
+        qhat = (int) (chunk / dhl);
+        qrem = (int) (chunk - qhat * dhl);
       } else {
-        final long tmp = divone(chunk, dh & LONG);
-        qhat = (int)(tmp & LONG);
-        qrem = (int)(tmp >>> 32);
+        qhat = (int) Long.divideUnsigned(chunk, dhl);
+        qrem = (int) (chunk - qhat * dhl);
       }
     }
 
-    if(qhat != 0 && correct) {
-      final long nl = rem[j + 2] & LONG;
+    if (qhat != 0 && correct) {
+      final long nl = rem[i] & LONG;
       long rs       = ((qrem & LONG) << 32) | nl;
       long est      =  (dl   & LONG) * (qhat & LONG);
 
-      if(0 < Long.compareUnsigned(est, rs)) {
+      if (0 < Long.compareUnsigned(est, rs)) {
         qhat--;
         qrem = (int)((qrem & LONG) + dhl);
-        if(dhl <= (qrem & LONG)) {
+        if (dhl <= (qrem & LONG)) {
           est -= (dl    & LONG);
           rs   = ((qrem & LONG) << 32) | nl;
-          if(0 < Long.compareUnsigned(est, rs)) {
+          if (0 < Long.compareUnsigned(est, rs)) {
             qhat--;
           }
         }
@@ -236,302 +211,130 @@ final class Division {
     return qhat;
   }
 
-  private static int D4_D5(
-    final int i, final int[] rem, final int[] divisor, final int qhat) {
+  /**
+   * Knuth step D4 & D5 for 64-bit divisor (long): Multiply and subtract, and add back divisor if a borrow occurred.
+   */
+  private static int D4_D5_long_LE(final int i, final int[] rem, final int dh, final int dl, final int qhat) {
+    final int tmp    = rem[i + 2];
+    rem[i + 2]       = 0;
+    final int borrow = mulsub_long_LE(rem, dh, dl, qhat & LONG, i);
 
-    final int tmp     = rem[i];
-    rem[i]            = 0;
-    final int borrow  = mulsub(rem, divisor, qhat & LONG, divisor.length, i);
-
-    if(tmp + 0x80000000 < borrow + 0x80000000) {
-      divadd(divisor, rem, i + 1);
+    if (tmp + 0x80000000L < borrow + 0x80000000L) {
+      divadd_long_LE(dh, dl, rem, i);
       return qhat - 1;
     }
     return qhat;
   }
 
-  private static int D4_D5(
-    final int i, final int[] rem, final int dh, final int dl, final int qhat) {
-
-    final int tmp    = rem[i];
-    rem[i]           = 0;
-    final int borrow = mulsub(rem, dh, dl, qhat & LONG, i);
-
-    if(tmp + 0x80000000 < borrow + 0x80000000) {
-      divadd(dh, dl, rem, i + 1);
-      return qhat - 1;
-    }
-    return qhat;
-  }
-
-  private static int mulsub(
-    final int[] q, final int[] a, final long x, final int len, int off) {
-
-    long carry = 0;
-    off       += len;
-
-    for(int ai = len - 1; 0 <= ai; ai--) {
-      long prod  = (a[ai] & LONG) * x + carry;
-      long diff  = q[off] - prod;
-      q[off--]   = (int)diff;
-      carry      = (prod >>> 32) + (((((~(int)prod) & LONG)) < (diff & LONG)) ? 1 : 0);
-    }
-    return (int)carry;
-  }
-
-  private static int mulsub(
-    final int[] q, final int dh, final int dl, final long x, final int off) {
+  /**
+   * Multiplication and subtraction loop for a 64-bit divisor.
+   */
+  private static int mulsub_long_LE(final int[] q, final int dh, final int dl, final long x, final int off) {
     long prod   = (dl & LONG) * x;
-    long diff   = q[off + 2] - prod;
-    q[off + 2]  = (int)diff;
-    long carry  = (prod >>> 32) + (((~(int)prod) & LONG) < (diff & LONG) ? 1 : 0);
+    long diff   = (q[off] & LONG) - (prod & LONG);
+    q[off]      = (int)diff;
+    long carry  = (prod >>> 32) + (diff < 0 ? 1 : 0);
     prod        = (dh & LONG) * x + carry;
-    diff        = q[off + 1] - prod;
+    diff        = (q[off + 1] & LONG) - (prod & LONG);
     q[off + 1]  = (int)diff;
-    return (int)(prod >>> 32) + (((~(int)prod) & LONG) < (diff & LONG) ? 1 : 0);
+    return (int)(prod >>> 32) + (diff < 0 ? 1 : 0);
   }
 
-  private static int divadd(final int[] a, final int[] result, final int offset) {
-    long carry = 0;
-
-    for(int ai = a.length - 1; 0 <= ai; ai--) {
-      long sum            = (a[ai] & LONG) + (result[ai + offset] & LONG) + carry;
-      result[ai + offset] = (int)sum;
-      carry               = sum >>> 32;
-    }
-    return (int)carry;
-  }
-
-  private static int divadd(final long dh, final long dl, final int[] result, final int off) {
-    result[off + 1]  = (int)(dl + (result[off + 1] & LONG));
-    final long sum   = dh + (result[off] & LONG);
-    result[off]      = (int)sum;
+  /**
+   * Correction addition loop for a 64-bit divisor.
+   */
+  private static int divadd_long_LE(final long dh, final long dl, final int[] result, final int off) {
+    long sum = dl + (result[off] & LONG);
+    result[off] = (int)sum;
+    long carry = sum >>> 32;
+    sum = dh + (result[off + 1] & LONG) + carry;
+    result[off + 1] = (int)sum;
     return (int)(sum >>> 32);
   }
 
-  private static long divone(final long a, final long b) {
-    if(b == 1) {
-      return (int)a;
-    }
+  /**
+   * Knuth step D3 for multi-word array divisor: Calculate quotient estimation qhat and remainder estimation qrem.
+   */
+  private static int D3_LE(final int i, final int[] rem, final int bLen, final int dh, final long dhl, final int dl) {
+    int qhat, qrem;
+    boolean correct = true;
+    final int nh    = rem[i + bLen];
+    final int nm    = rem[i + bLen - 1];
 
-    long quo = (a >>> 1) / (b >>> 1);
-    long rem = a - quo * b;
-
-    while(rem < 0) {
-      rem += b;
-      quo--;
-    }
-
-    while(b <= rem) {
-      rem -= b;
-      quo++;
-    }
-
-    return (rem << 32) | (quo & LONG);
-  }
-
-  static void lshunt(final int[] a, final int places) {
-    lshunt(a, places, a.length);
-  }
-
-  static void lshunt(final int[] a, final int places, final int len) {
-    final int invplaces = 32 - places;
-    for(int ai = 0, lim = len - 1; ai < lim; ai++)
-      a[ai]  = (a[ai] << places) | (a[ai + 1] >>> invplaces);
-    a[len - 1] <<= places;
-  }
-
-  private static void rshunt(final int[] a, final int places) {
-    rshunt(a, places, a.length);
-  }
-
-  private static void rshunt(final int[] a, final int places, final int len) {
-    int invplaces = 32 - places;
-    for(int ai = len - 1; 0 < ai; ai--)
-      a[ai] = (a[ai - 1] << invplaces) | (a[ai] >>> places);
-    a[0] >>>= places;
-  }
-
-  private static void rshift(final int[] a, final int places) {
-    rshift(a, places, a.length);
-  }
-
-  private static void rshift(final int[] a, final int places, final int len) {
-    if(len == 0) {
-      return;
-    }
-    final int bits = places & 0x1F;
-    if(bits == 0) {
-      return;
-    }
-    if(Integer.bitCount(a[0]) <= bits) {
-      lshunt(a, 32 - bits, len);
-      for(int ai = len - 1; 0 < ai; ai--) {
-        a[ai] = a[ai - 1];
-      }
-      a[0] = 0;
+    if (nh == dh) {
+      qhat    = ~0;
+      qrem    = nh + nm;
+      correct = nh + 0x80000000 <= qrem + 0x80000000;
     } else {
-      rshunt(a, bits, len);
-    }
-  }
-
-  private static void copyshift(
-    final int[] src, int srci, final int[] dst, final int dsti, final int places) {
-    copyshift(src, srci, dst, dsti, places, src.length);
-  }
-
-  private static void copyshift(
-    final int[] src, int srci, final int[] dst, final int dsti, final int places, final int srcLen) {
-    final int invplaces = 32 - places;
-
-    int carry = src[srci];
-    for(int i = 0; i < srcLen - 1; i++)
-      dst[dsti + i] = (carry << places) | ((carry = src[++srci]) >>> invplaces);
-    dst[dsti + srcLen - 1] = carry << places;
-  }
-
-  // Non-allocating division helper: divisor is a single int
-  static void divBE(final int[] a, final int aLen, final int b, final int[] quo, final int[] remOut) {
-    final long bl = b & LONG;
-
-    if(aLen == 1) {
-      final long al = a[0] & LONG;
-      quo[0] = (int)(al / bl);
-      remOut[0] = (int)(al % bl);
-      return;
-    }
-
-    System.arraycopy(a, 0, quo, 0, aLen);
-    final int places = Integer.numberOfLeadingZeros(b);
-    int  rem         = a[0], alen = aLen;
-    final long reml  = rem & LONG;
-
-    if(reml < bl) {
-      quo[0] = 0;
-    } else {
-      quo[0] = (int)(reml / bl);
-      rem    = (int)(reml % bl);
-    }
-
-    while(0 < --alen) {
-      final long est = ((rem & LONG) << 32) | (a[aLen - alen] & LONG);
-      final int q;
-      if(0 <= est) {
-        q   = (int)(est / bl);
-        rem = (int)(est % bl);
+      final long chunk = (((long)nh) << 32) | (nm & LONG);
+      // Fast path: use simple JIT-optimized signed division for positive numbers
+      if (chunk >= 0) {
+        qhat = (int) (chunk / dhl);
+        qrem = (int) (chunk - qhat * dhl);
       } else {
-        long tmp = divone(est, b & LONG);
-        q   = (int)(tmp & LONG);
-        rem = (int)(tmp >>> 32);
+        qhat = (int) Long.divideUnsigned(chunk, dhl);
+        qrem = (int) (chunk - qhat * dhl);
       }
-      quo[aLen - alen] = q;
     }
 
-    remOut[0] = 0 < places ? rem % b : rem;
+    if (qhat != 0 && correct) {
+      final long nl = rem[i + bLen - 2] & LONG;
+      long rs       = ((qrem & LONG) << 32) | nl;
+      long est      =  (dl   & LONG) * (qhat & LONG);
+
+      if (0 < Long.compareUnsigned(est, rs)) {
+        qhat--;
+        qrem = (int)((qrem & LONG) + dhl);
+        if (dhl <= (qrem & LONG)) {
+          est -= (dl    & LONG);
+          rs   = ((qrem & LONG) << 32) | nl;
+          if (0 < Long.compareUnsigned(est, rs)) {
+            qhat--;
+          }
+        }
+      }
+    }
+    return qhat;
   }
 
-  // Non-allocating division helper: divisor is a long
-  static void divBE(final int[] a, final int aLen, long b, final int[] quo, final int[] rem) {
-    final int  alen = aLen;
+  /**
+   * Knuth step D4 & D5 for multi-word array divisor: Multiply and subtract, and add back divisor if a borrow occurred.
+   */
+  private static int D4_D5_LE(final int i, final int[] rem, final int[] divisor, final int qhat, final int divLen) {
+    final int tmp     = rem[i + divLen];
+    rem[i + divLen]   = 0;
+    final int borrow  = mulsub_LE(rem, divisor, qhat & LONG, divLen, i);
 
-    java.util.Arrays.fill(rem, 0, alen + 2, 0);
-    java.util.Arrays.fill(quo, 0, alen, 0);
-
-    System.arraycopy(a, 0, rem, 1, alen);
-
-    final int places = Long.numberOfLeadingZeros(b);
-    if(0 < places) {
-      lshunt(rem, places, alen + 1);
-      b <<= places;
-    }
-
-    final int   dh = (int)(b >>> 32);
-    final long dhl = dh & LONG;
-    final int   dl = (int)(b & LONG);
-
-    int qhat;
-    for(int i = 0; i < alen - 1; i++) {
-      if((qhat = D3(i, rem, dh, dhl, dl)) != 0) {
-        quo[i] = D4_D5(i, rem, dh, dl, qhat);
-      }
-    }
-
-    if(0 < places) {
-      rshift(rem, places, alen + 1);
-    }
-  }
-
-  // Non-allocating division helper: divisor is an int[]
-  static void divBE(final int[] a, final int aLen, final int[] b, final int bLen, final int[] quo, final int[] rem, final int[] divScratch) {
-    final int places = Integer.numberOfLeadingZeros(b[0]);
-    final int[] activeDiv;
-    final int remLen;
-
-    if(0 < places) {
-      activeDiv = divScratch;
-      java.util.Arrays.fill(divScratch, 0, bLen + 1, 0);
-      copyshift(b, 0, activeDiv, 0, places, bLen);
-
-      if(places <= Integer.numberOfLeadingZeros(a[0])) {
-        remLen = aLen + 1;
-        java.util.Arrays.fill(rem, 0, remLen + 1, 0);
-        copyshift(a, 0, rem, 1, places, aLen);
-      } else {
-        remLen = aLen + 2;
-        java.util.Arrays.fill(rem, 0, remLen + 1, 0);
-        final int invp = 32 - places;
-        int c          = 0;
-        for(int i = 0; i < aLen; i++)
-          rem[i + 1] = (c << places) | ((c = a[i]) >>> invp);
-        rem[aLen + 1] = c << places;
-      }
-    } else {
-      activeDiv = b;
-      remLen = aLen + 1;
-      java.util.Arrays.fill(rem, 0, remLen + 1, 0);
-      System.arraycopy(a, 0, rem, 1, aLen);
-    }
-
-    final int qints = remLen - bLen;
-    java.util.Arrays.fill(quo, 0, qints + 1, 0);
-
-    final int  dh  = activeDiv[0];
-    final int  dl  = activeDiv[1];
-    final long dhl = dh & LONG;
-
-    int qhat;
-    for(int i = 0; i < qints; i++) {
-      if((qhat = D3(i, rem, dh, dhl, dl)) != 0) {
-        quo[i] = D4_D5(i, rem, activeDiv, qhat, bLen);
-      }
-    }
-
-    if(0 < places) {
-      rshift(rem, places, remLen);
-    }
-  }
-
-  private static int D4_D5(
-    final int i, final int[] rem, final int[] divisor, final int qhat, final int divLen) {
-
-    final int tmp     = rem[i];
-    rem[i]            = 0;
-    final int borrow  = mulsub(rem, divisor, qhat & LONG, divLen, i);
-
-    if(tmp + 0x80000000 < borrow + 0x80000000) {
-      divadd(divisor, rem, i + 1, divLen);
+    if (tmp + 0x80000000L < borrow + 0x80000000L) {
+      divadd_LE(divisor, rem, i, divLen);
       return qhat - 1;
     }
     return qhat;
   }
 
-  private static int divadd(final int[] a, final int[] result, final int offset, final int aLen) {
+  /**
+   * Multi-word multiplication and subtraction loop.
+   */
+  private static int mulsub_LE(final int[] q, final int[] a, final long x, final int len, final int off) {
     long carry = 0;
+    for (int ai = 0; ai < len; ai++) {
+      long prod = (a[ai] & LONG) * x + carry;
+      long diff = (q[off + ai] & LONG) - (prod & LONG);
+      q[off + ai] = (int)diff;
+      carry = (prod >>> 32) + (diff < 0 ? 1 : 0);
+    }
+    return (int)carry;
+  }
 
-    for(int ai = aLen - 1; 0 <= ai; ai--) {
-      long sum            = (a[ai] & LONG) + (result[ai + offset] & LONG) + carry;
+  /**
+   * Multi-word correction addition loop.
+   */
+  private static int divadd_LE(final int[] a, final int[] result, final int offset, final int aLen) {
+    long carry = 0;
+    for (int ai = 0; ai < aLen; ai++) {
+      long sum = (a[ai] & LONG) + (result[ai + offset] & LONG) + carry;
       result[ai + offset] = (int)sum;
-      carry               = sum >>> 32;
+      carry = sum >>> 32;
     }
     return (int)carry;
   }

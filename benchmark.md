@@ -45,9 +45,9 @@ The following JMH benchmarks compare **mutable**, **immutable** `UInt256` implem
 ### Division
 | Variant | Throughput (ops / µs) | GC Alloc Rate (MB / s) | GC Alloc Rate Norm (B / op) | GC Count |
 |--------|----------------------|-----------------------|----------------------------|----------|
-| `BigInteger` | 8.31 ± 2.48 | 1521.46 ± 452.97 | 288 B/op | 44 |
-| `UInt256` immutable | 5.18 ± 1.08 | 237.03 ± 49.30 | 72 B/op | 13 |
-| `UInt256` mutable | 6.41 ± 0.57 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
+| `BigInteger` | 5.30 ± 2.50 | 1521.46 ± 452.97 | 288 B/op | 44 |
+| `UInt256` immutable | 4.19 ± 5.55 | 237.03 ± 49.30 | 72 B/op | 13 |
+| `UInt256` mutable | 5.90 ± 3.85 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
 ---
 
 ### Multiplication
