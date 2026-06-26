@@ -4,7 +4,7 @@ This is a fork of JUINT implementation.  Why?  Because I want it mutable.  When 
 high performance in java, the first rule is to save on garbage collection. The best way is to 
 not make garbage. Mutable objects are the best can help to reduce GC pressure and new allocations.
 
-Another source of grieg, are small arrays – array is an object and produces considerable overhead.  Using 
+Another source of grief is small arrays – an array is an object and produces considerable overhead.  Using 
 a big partitioned array can help keep memory usage low. 
 
 Due to excessive rewriting of the code, it is unlikely that it will be merged back.  But the binary interface 

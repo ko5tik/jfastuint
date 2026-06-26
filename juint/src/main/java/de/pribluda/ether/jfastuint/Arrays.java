@@ -126,19 +126,27 @@ final class Arrays {
     }
 
     static boolean isZero(final int[] ints) {
-        for (int val : ints) {
-            if (val != 0) return false;
+        return isZero(ints, 0, ints.length);
+    }
+
+    static boolean isZero(final int[] ints, final int offset, final int length) {
+        for (int i = 0; i < length; i++) {
+            if (ints[offset + i] != 0) return false;
         }
         return true;
     }
 
     static int bitLength(int a[]) {
-        int firstNonZero = a.length - 1;
-        while (firstNonZero >= 0 && a[firstNonZero] == 0) {
+        return bitLength(a, 0, a.length);
+    }
+
+    static int bitLength(int a[], final int offset, final int length) {
+        int firstNonZero = length - 1;
+        while (firstNonZero >= 0 && a[offset + firstNonZero] == 0) {
             firstNonZero--;
         }
         if (firstNonZero < 0) return 0;
-        return (firstNonZero * 32) + (32 - Integer.numberOfLeadingZeros(a[firstNonZero]));
+        return (firstNonZero * 32) + (32 - Integer.numberOfLeadingZeros(a[offset + firstNonZero]));
     }
 
     static int[] stripLeadingZeroes(final int[] ints, int strip) {
@@ -167,17 +175,20 @@ final class Arrays {
     // =========================================================================
 
     static int compare(final int[] ints, final int[] other) {
-        final int len = ints.length;
-        if (len < other.length) {
+        return compare(ints, 0, ints.length, other, 0, other.length);
+    }
+
+    static int compare(final int[] ints, final int offset, final int length, final int[] other, final int otherOffset, final int otherLength) {
+        if (length < otherLength) {
             return -1;
         }
-        if (len > other.length) {
+        if (length > otherLength) {
             return 1;
         }
 
-        for (int i = len - 1; i >= 0; i--) {
-            if (ints[i] != other[i]) {
-                return Integer.compareUnsigned(ints[i], other[i]);
+        for (int i = length - 1; i >= 0; i--) {
+            if (ints[offset + i] != other[otherOffset + i]) {
+                return Integer.compareUnsigned(ints[offset + i], other[otherOffset + i]);
             }
         }
 
@@ -185,12 +196,16 @@ final class Arrays {
     }
 
     static int compareActive(final int[] a, final int[] b) {
-        int aLen = a.length;
-        while (aLen > 0 && a[aLen - 1] == 0) {
+        return compareActive(a, 0, a.length, b, 0, b.length);
+    }
+
+    static int compareActive(final int[] a, final int aOffset, final int aLength, final int[] b, final int bOffset, final int bLength) {
+        int aLen = aLength;
+        while (aLen > 0 && a[aOffset + aLen - 1] == 0) {
             aLen--;
         }
-        int bLen = b.length;
-        while (bLen > 0 && b[bLen - 1] == 0) {
+        int bLen = bLength;
+        while (bLen > 0 && b[bOffset + bLen - 1] == 0) {
             bLen--;
         }
         if (aLen < bLen) {
@@ -200,8 +215,8 @@ final class Arrays {
             return 1;
         }
         for (int i = aLen - 1; i >= 0; i--) {
-            int aVal = a[i];
-            int bVal = b[i];
+            int aVal = a[aOffset + i];
+            int bVal = b[bOffset + i];
             if (aVal != bVal) {
                 return Integer.compareUnsigned(aVal, bVal);
             }
@@ -210,7 +225,11 @@ final class Arrays {
     }
 
     static int compare(final int[] ints, final BigInteger other) {
-        final int il = bitLength(ints), bl = other.bitLength();
+        return compare(ints, 0, ints.length, other);
+    }
+
+    static int compare(final int[] ints, final int offset, final int length, final BigInteger other) {
+        final int il = bitLength(ints, offset, length), bl = other.bitLength();
         if (il < bl) {
             return -1;
         }
@@ -218,7 +237,7 @@ final class Arrays {
             return 1;
         }
 
-        return compareActive(ints, from(other, ints.length));
+        return compareActive(ints, offset, length, from(other, length), 0, length);
     }
 
     // =========================================================================
@@ -227,112 +246,166 @@ final class Arrays {
 
     // immutable version of not
     static int[] not(final int[] ints) {
-        int[] out = copyOf(ints, ints.length);
-        mNot(out);
+        return not(ints, 0, ints.length);
+    }
+
+    static int[] not(final int[] ints, final int offset, final int length) {
+        int[] out = new int[length];
+        System.arraycopy(ints, offset, out, 0, length);
+        mNot(out, 0, length);
         return out;
     }
 
     // in place version of not
     static boolean mNot(final int[] ints) {
-        for (int i = 0; i < ints.length; i++) {
-            ints[i] = ~ints[i];
+        return mNot(ints, 0, ints.length);
+    }
+
+    static boolean mNot(final int[] ints, final int offset, final int length) {
+        for (int i = 0; i < length; i++) {
+            ints[offset + i] = ~ints[offset + i];
         }
         return false;
     }
 
     // immutable bitwise and: copies the first operand and applies mutable mAnd
     static int[] and(final int[] a, final int[] b) {
-        int[] out = copyOf(a, a.length);
-        mAnd(out, b);
+        return and(a, 0, a.length, b, 0, b.length);
+    }
+
+    static int[] and(final int[] a, final int aOffset, final int aLength, final int[] b, final int bOffset, final int bLength) {
+        int[] out = new int[aLength];
+        System.arraycopy(a, aOffset, out, 0, aLength);
+        mAnd(out, 0, aLength, b, bOffset, bLength);
         return out;
     }
 
     // in-place bitwise and mutating the first operand 'ints'
     static boolean mAnd(final int[] ints, final int[] other) {
-        int len = ints.length;
-        int otherLen = other.length;
-        for (int i = 0; i < len; i++) {
-            ints[i] &= (i < otherLen ? other[i] : 0);
+        return mAnd(ints, 0, ints.length, other, 0, other.length);
+    }
+
+    static boolean mAnd(final int[] ints, final int offset, final int length, final int[] other, final int otherOffset, final int otherLength) {
+        for (int i = 0; i < length; i++) {
+            ints[offset + i] &= (i < otherLength ? other[otherOffset + i] : 0);
         }
         return false;
     }
 
     // immutable bitwise or: copies the first operand and applies mutable mOr
     static int[] or(final int[] a, final int[] b) {
-        int[] out = copyOf(a, a.length);
-        mOr(out, b);
+        return or(a, 0, a.length, b, 0, b.length);
+    }
+
+    static int[] or(final int[] a, final int aOffset, final int aLength, final int[] b, final int bOffset, final int bLength) {
+        int[] out = new int[aLength];
+        System.arraycopy(a, aOffset, out, 0, aLength);
+        mOr(out, 0, aLength, b, bOffset, bLength);
         return out;
     }
 
     // in-place bitwise or mutating the first operand 'ints'
     static boolean mOr(final int[] ints, final int[] other) {
-        int len = ints.length;
-        int otherLen = other.length;
-        for (int i = 0; i < len; i++) {
-            ints[i] |= (i < otherLen ? other[i] : 0);
+        return mOr(ints, 0, ints.length, other, 0, other.length);
+    }
+
+    static boolean mOr(final int[] ints, final int offset, final int length, final int[] other, final int otherOffset, final int otherLength) {
+        for (int i = 0; i < length; i++) {
+            ints[offset + i] |= (i < otherLength ? other[otherOffset + i] : 0);
         }
         return false;
     }
 
     // immutable bitwise xor: copies the first operand and applies mutable mXor
     static int[] xor(final int[] a, final int[] b) {
-        int[] out = copyOf(a, a.length);
-        mXor(out, b);
+        return xor(a, 0, a.length, b, 0, b.length);
+    }
+
+    static int[] xor(final int[] a, final int aOffset, final int aLength, final int[] b, final int bOffset, final int bLength) {
+        int[] out = new int[aLength];
+        System.arraycopy(a, aOffset, out, 0, aLength);
+        mXor(out, 0, aLength, b, bOffset, bLength);
         return out;
     }
 
     // in-place bitwise xor mutating the first operand 'ints'
     static boolean mXor(final int[] ints, final int[] other) {
-        int len = ints.length;
-        int otherLen = other.length;
-        for (int i = 0; i < len; i++) {
-            ints[i] ^= (i < otherLen ? other[i] : 0);
+        return mXor(ints, 0, ints.length, other, 0, other.length);
+    }
+
+    static boolean mXor(final int[] ints, final int offset, final int length, final int[] other, final int otherOffset, final int otherLength) {
+        for (int i = 0; i < length; i++) {
+            ints[offset + i] ^= (i < otherLength ? other[otherOffset + i] : 0);
         }
         return false;
     }
 
     // immutable setBit: copies the operand and applies mutable mSetBit
     static int[] setBit(final int[] a, final int bit) {
-        int[] out = copyOf(a, a.length);
-        mSetBit(out, bit);
+        return setBit(a, 0, a.length, bit);
+    }
+
+    static int[] setBit(final int[] a, final int offset, final int length, final int bit) {
+        int[] out = new int[length];
+        System.arraycopy(a, offset, out, 0, length);
+        mSetBit(out, 0, length, bit);
         return out;
     }
 
     // in-place setBit mutating 'ints'
     static boolean mSetBit(final int[] ints, final int bit) {
-        int len = ints.length;
-        if (bit < 0 || bit >= len * 32) return true;
-        ints[bit >>> 5] |= (1 << (bit & 31));
+        return mSetBit(ints, 0, ints.length, bit);
+    }
+
+    static boolean mSetBit(final int[] ints, final int offset, final int length, final int bit) {
+        if (bit < 0 || bit >= length * 32) return true;
+        ints[offset + (bit >>> 5)] |= (1 << (bit & 31));
         return false;
     }
 
     // immutable clearBit: copies the operand and applies mutable mClearBit
     static int[] clearBit(final int[] a, final int bit) {
-        int[] out = copyOf(a, a.length);
-        mClearBit(out, bit);
+        return clearBit(a, 0, a.length, bit);
+    }
+
+    static int[] clearBit(final int[] a, final int offset, final int length, final int bit) {
+        int[] out = new int[length];
+        System.arraycopy(a, offset, out, 0, length);
+        mClearBit(out, 0, length, bit);
         return out;
     }
 
     // in-place clearBit mutating 'ints'
     static boolean mClearBit(final int[] ints, final int bit) {
-        int len = ints.length;
-        if (bit < 0 || bit >= len * 32) return true;
-        ints[bit >>> 5] &= ~(1 << (bit & 31));
+        return mClearBit(ints, 0, ints.length, bit);
+    }
+
+    static boolean mClearBit(final int[] ints, final int offset, final int length, final int bit) {
+        if (bit < 0 || bit >= length * 32) return true;
+        ints[offset + (bit >>> 5)] &= ~(1 << (bit & 31));
         return false;
     }
 
     // immutable flipBit: copies the operand and applies mutable mFlipBit
     static int[] flipBit(final int[] a, final int bit) {
-        int[] out = copyOf(a, a.length);
-        mFlipBit(out, bit);
+        return flipBit(a, 0, a.length, bit);
+    }
+
+    static int[] flipBit(final int[] a, final int offset, final int length, final int bit) {
+        int[] out = new int[length];
+        System.arraycopy(a, offset, out, 0, length);
+        mFlipBit(out, 0, length, bit);
         return out;
     }
 
     // in-place flipBit mutating 'ints'
     static boolean mFlipBit(final int[] ints, final int bit) {
-        int len = ints.length;
-        if (bit < 0 || bit >= len * 32) return true;
-        ints[bit >>> 5] ^= (1 << (bit & 31));
+        return mFlipBit(ints, 0, ints.length, bit);
+    }
+
+    static boolean mFlipBit(final int[] ints, final int offset, final int length, final int bit) {
+        if (bit < 0 || bit >= length * 32) return true;
+        ints[offset + (bit >>> 5)] ^= (1 << (bit & 31));
         return false;
     }
 
@@ -342,74 +415,90 @@ final class Arrays {
 
     // immutable lshift: copies the operand to target width and applies mutable mShiftLeft
     static int[] lshift(final int[] a, final int n) {
-        int[] out = copyOf(a, a.length);
-        mShiftLeft(out, n);
+        return lshift(a, 0, a.length, n);
+    }
+
+    static int[] lshift(final int[] a, final int offset, final int length, final int n) {
+        int[] out = new int[length];
+        System.arraycopy(a, offset, out, 0, length);
+        mShiftLeft(out, 0, length, n);
         return out;
     }
 
     // in-place lshift mutating 'ints'
     static boolean mShiftLeft(final int[] ints, final int places) {
+        return mShiftLeft(ints, 0, ints.length, places);
+    }
+
+    static boolean mShiftLeft(final int[] ints, final int offset, final int length, final int places) {
         if (places < 0) {
-            return mShiftRight(ints, -places);
+            return mShiftRight(ints, offset, length, -places);
         }
         if (places == 0) {
             return false;
         }
-        int len = ints.length;
-        if (places >= len * 32) {
-            boolean overflow = !isZero(ints);
-            java.util.Arrays.fill(ints, 0);
+        if (places >= length * 32) {
+            boolean overflow = !isZero(ints, offset, length);
+            java.util.Arrays.fill(ints, offset, offset + length, 0);
             return overflow;
         }
         int words = places >>> 5;
         int bits = places & 31;
         boolean overflow = false;
         if (words > 0) {
-            for (int i = len - words; i < len; i++) {
-                if (ints[i] != 0) {
+            for (int i = length - words; i < length; i++) {
+                if (ints[offset + i] != 0) {
                     overflow = true;
                 }
             }
         }
-        if (bits > 0 && words < len && (ints[len - 1 - words] >>> (32 - bits)) != 0) {
+        if (bits > 0 && words < length && (ints[offset + length - 1 - words] >>> (32 - bits)) != 0) {
             overflow = true;
         }
         if (bits == 0) {
-            for (int i = len - 1; i >= words; i--) {
-                ints[i] = ints[i - words];
+            for (int i = length - 1; i >= words; i--) {
+                ints[offset + i] = ints[offset + i - words];
             }
         } else {
             final int invShift = 32 - bits;
-            for (int i = len - 1; i > words; i--) {
-                ints[i] = (ints[i - words] << bits) | (ints[i - words - 1] >>> invShift);
+            for (int i = length - 1; i > words; i--) {
+                ints[offset + i] = (ints[offset + i - words] << bits) | (ints[offset + i - words - 1] >>> invShift);
             }
-            ints[words] = ints[0] << bits;
+            ints[offset + words] = ints[offset] << bits;
         }
         for (int i = 0; i < words; i++) {
-            ints[i] = 0;
+            ints[offset + i] = 0;
         }
         return overflow;
     }
 
     // immutable rshift: copies the operand to target width and applies mutable mShiftRight
     static int[] rshift(final int[] a, final int n) {
-        int[] out = copyOf(a, a.length);
-        mShiftRight(out, n);
+        return rshift(a, 0, a.length, n);
+    }
+
+    static int[] rshift(final int[] a, final int offset, final int length, final int n) {
+        int[] out = new int[length];
+        System.arraycopy(a, offset, out, 0, length);
+        mShiftRight(out, 0, length, n);
         return out;
     }
 
     // in-place rshift mutating 'ints'
     static boolean mShiftRight(final int[] ints, final int places) {
+        return mShiftRight(ints, 0, ints.length, places);
+    }
+
+    static boolean mShiftRight(final int[] ints, final int offset, final int length, final int places) {
         if (places < 0) {
-            return mShiftLeft(ints, -places);
+            return mShiftLeft(ints, offset, length, -places);
         }
         if (places == 0) {
             return false;
         }
-        int len = ints.length;
-        if (places >= len * 32) {
-            boolean overflow = !isZero(ints);
-            java.util.Arrays.fill(ints, 0);
+        if (places >= length * 32) {
+            boolean overflow = !isZero(ints, offset, length);
+            java.util.Arrays.fill(ints, offset, offset + length, 0);
             return overflow;
         }
         int words = places >>> 5;
@@ -417,27 +506,27 @@ final class Arrays {
         boolean overflow = false;
         if (words > 0) {
             for (int i = 0; i < words; i++) {
-                if (ints[i] != 0) {
+                if (ints[offset + i] != 0) {
                     overflow = true;
                 }
             }
         }
-        if (bits > 0 && words < len && (ints[words] & ((1 << bits) - 1)) != 0) {
+        if (bits > 0 && words < length && (ints[offset + words] & ((1 << bits) - 1)) != 0) {
             overflow = true;
         }
         if (bits == 0) {
-            for (int i = 0; i < len - words; i++) {
-                ints[i] = ints[i + words];
+            for (int i = 0; i < length - words; i++) {
+                ints[offset + i] = ints[offset + i + words];
             }
         } else {
             final int invShift = 32 - bits;
-            for (int i = 0; i < len - words - 1; i++) {
-                ints[i] = (ints[i + words] >>> bits) | (ints[i + words + 1] << invShift);
+            for (int i = 0; i < length - words - 1; i++) {
+                ints[offset + i] = (ints[offset + i + words] >>> bits) | (ints[offset + i + words + 1] << invShift);
             }
-            ints[len - 1 - words] = ints[len - 1] >>> bits;
+            ints[offset + length - 1 - words] = ints[offset + length - 1] >>> bits;
         }
-        for (int i = len - words; i < len; i++) {
-            ints[i] = 0;
+        for (int i = length - words; i < length; i++) {
+            ints[offset + i] = 0;
         }
         return overflow;
     }
@@ -448,17 +537,26 @@ final class Arrays {
 
     // immutable inc: copies the operand to target width and applies mutable mInc
     static int[] inc(final int[] a) {
-        int[] out = copyOf(a, a.length);
-        mInc(out);
+        return inc(a, 0, a.length);
+    }
+
+    static int[] inc(final int[] a, final int offset, final int length) {
+        int[] out = new int[length];
+        System.arraycopy(a, offset, out, 0, length);
+        mInc(out, 0, length);
         return out;
     }
 
     // in-place inc mutating 'ints'
     static boolean mInc(final int[] ints) {
+        return mInc(ints, 0, ints.length);
+    }
+
+    static boolean mInc(final int[] ints, final int offset, final int length) {
         long carry = 1;
-        for (int i = 0; i < ints.length && carry != 0; i++) {
-            long sum = (ints[i] & LONG) + carry;
-            ints[i] = (int) sum;
+        for (int i = 0; i < length && carry != 0; i++) {
+            long sum = (ints[offset + i] & LONG) + carry;
+            ints[offset + i] = (int) sum;
             carry = sum >>> 32;
         }
         return carry != 0;
@@ -466,17 +564,26 @@ final class Arrays {
 
     // immutable dec: copies the operand and applies mutable mDec
     static int[] dec(final int[] a) {
-        int[] out = copyOf(a, a.length);
-        mDec(out);
+        return dec(a, 0, a.length);
+    }
+
+    static int[] dec(final int[] a, final int offset, final int length) {
+        int[] out = new int[length];
+        System.arraycopy(a, offset, out, 0, length);
+        mDec(out, 0, length);
         return out;
     }
 
     // in-place dec mutating 'ints'
     static boolean mDec(final int[] ints) {
+        return mDec(ints, 0, ints.length);
+    }
+
+    static boolean mDec(final int[] ints, final int offset, final int length) {
         long borrow = 1;
-        for (int i = 0; i < ints.length && borrow != 0; i++) {
-            long diff = (ints[i] & LONG) - borrow;
-            ints[i] = (int) diff;
+        for (int i = 0; i < length && borrow != 0; i++) {
+            long diff = (ints[offset + i] & LONG) - borrow;
+            ints[offset + i] = (int) diff;
             borrow = (diff >> 32) != 0 ? 1 : 0;
         }
         return borrow != 0;
@@ -484,27 +591,34 @@ final class Arrays {
 
     // immutable addition: copies the longer operand to target width and applies mutable mAdd
     static int[] add(final int[] a, final int[] b) {
-        int[] out = copyOf(a, a.length);
-        mAdd(out, b);
+        return add(a, 0, a.length, b, 0, b.length);
+    }
+
+    static int[] add(final int[] a, final int aOffset, final int aLength, final int[] b, final int bOffset, final int bLength) {
+        int[] out = new int[aLength];
+        System.arraycopy(a, aOffset, out, 0, aLength);
+        mAdd(out, 0, aLength, b, bOffset, bLength);
         return out;
     }
 
     // in-place addition mutating 'ints'
     static boolean mAdd(final int[] ints, final int[] other) {
+        return mAdd(ints, 0, ints.length, other, 0, other.length);
+    }
+
+    static boolean mAdd(final int[] ints, final int offset, final int length, final int[] other, final int otherOffset, final int otherLength) {
         long carry = 0;
-        int len = ints.length;
-        int otherLen = other.length;
-        for (int i = 0; i < len; i++) {
-            long aVal = ints[i] & LONG;
-            long bVal = i < otherLen ? (other[i] & LONG) : 0L;
+        for (int i = 0; i < length; i++) {
+            long aVal = ints[offset + i] & LONG;
+            long bVal = i < otherLength ? (other[otherOffset + i] & LONG) : 0L;
             long sum = aVal + bVal + carry;
-            ints[i] = (int) sum;
+            ints[offset + i] = (int) sum;
             carry = sum >>> 32;
         }
         boolean overflow = carry != 0;
-        if (!overflow && otherLen > len) {
-            for (int i = len; i < otherLen; i++) {
-                if (other[i] != 0) {
+        if (!overflow && otherLength > length) {
+            for (int i = length; i < otherLength; i++) {
+                if (other[otherOffset + i] != 0) {
                     overflow = true;
                     break;
                 }
@@ -515,27 +629,34 @@ final class Arrays {
 
     // immutable subtraction: copies the first operand and applies mutable mSubtract
     static int[] sub(final int[] a, final int[] b) {
-        int[] out = copyOf(a, a.length);
-        mSubtract(out, b);
+        return sub(a, 0, a.length, b, 0, b.length);
+    }
+
+    static int[] sub(final int[] a, final int aOffset, final int aLength, final int[] b, final int bOffset, final int bLength) {
+        int[] out = new int[aLength];
+        System.arraycopy(a, aOffset, out, 0, aLength);
+        mSubtract(out, 0, aLength, b, bOffset, bLength);
         return out;
     }
 
     // in-place subtraction mutating 'ints'
     static boolean mSubtract(final int[] ints, final int[] other) {
+        return mSubtract(ints, 0, ints.length, other, 0, other.length);
+    }
+
+    static boolean mSubtract(final int[] ints, final int offset, final int length, final int[] other, final int otherOffset, final int otherLength) {
         long borrow = 0;
-        int len = ints.length;
-        int otherLen = other.length;
-        for (int i = 0; i < len; i++) {
-            long aVal = ints[i] & LONG;
-            long bVal = i < otherLen ? (other[i] & LONG) : 0L;
+        for (int i = 0; i < length; i++) {
+            long aVal = ints[offset + i] & LONG;
+            long bVal = i < otherLength ? (other[otherOffset + i] & LONG) : 0L;
             long diff = aVal - bVal - borrow;
-            ints[i] = (int) diff;
+            ints[offset + i] = (int) diff;
             borrow = (diff >> 32) != 0 ? 1 : 0;
         }
         boolean overflow = borrow != 0;
-        if (!overflow && otherLen > len) {
-            for (int i = len; i < otherLen; i++) {
-                if (other[i] != 0) {
+        if (!overflow && otherLength > length) {
+            for (int i = length; i < otherLength; i++) {
+                if (other[otherOffset + i] != 0) {
                     overflow = true;
                     break;
                 }
@@ -546,29 +667,38 @@ final class Arrays {
 
     // immutable subgt: copies the first operand and applies mutable mSubgt
     static int[] subgt(final int[] a, final int[] b) {
-        int[] out = copyOf(a, a.length);
-        mSubgt(out, b);
+        return subgt(a, 0, a.length, b, 0, b.length);
+    }
+
+    static int[] subgt(final int[] a, final int aOffset, final int aLength, final int[] b, final int bOffset, final int bLength) {
+        int[] out = new int[aLength];
+        System.arraycopy(a, aOffset, out, 0, aLength);
+        mSubgt(out, 0, aLength, b, bOffset, bLength);
         return out;
     }
 
     // in-place subgt mutating 'ints'
     static boolean mSubgt(final int[] ints, final int[] other) {
+        return mSubgt(ints, 0, ints.length, other, 0, other.length);
+    }
+
+    static boolean mSubgt(final int[] ints, final int offset, final int length, final int[] other, final int otherOffset, final int otherLength) {
         Scratchpad pad = SCRATCH.get();
         int[] temp = pad.a;
         java.util.Arrays.fill(temp, 0);
 
-        if (ints.length == 0) {
-            System.arraycopy(other, 0, temp, 0, Math.min(other.length, temp.length));
-            mNot(temp);
-            mInc(temp);
+        if (length == 0) {
+            System.arraycopy(other, otherOffset, temp, 0, Math.min(otherLength, temp.length));
+            mNot(temp, 0, temp.length);
+            mInc(temp, 0, temp.length);
         } else {
-            System.arraycopy(other, 0, temp, 0, Math.min(other.length, temp.length));
-            mSubtract(temp, ints);
-            mNot(temp);
-            mInc(temp);
+            System.arraycopy(other, otherOffset, temp, 0, Math.min(otherLength, temp.length));
+            mSubtract(temp, 0, temp.length, ints, offset, length);
+            mNot(temp, 0, temp.length);
+            mInc(temp, 0, temp.length);
         }
 
-        System.arraycopy(temp, 0, ints, 0, ints.length);
+        System.arraycopy(temp, 0, ints, offset, length);
         return true;
     }
 
@@ -581,44 +711,64 @@ final class Arrays {
     }
 
     static int[] multiply(int[] a, int[] b, boolean[] overflowHolder) {
-        int[] out = copyOf(a, a.length);
-        overflowHolder[0] = mMultiply(out, b);
+        return multiply(a, 0, a.length, b, 0, b.length, overflowHolder);
+    }
+
+    static int[] multiply(int[] a, int aOffset, int aLength, int[] b, int bOffset, int bLength, boolean[] overflowHolder) {
+        int[] out = new int[aLength];
+        System.arraycopy(a, aOffset, out, 0, aLength);
+        overflowHolder[0] = mMultiply(out, 0, aLength, b, bOffset, bLength);
         return out;
     }
 
     //  uses grammar school multiplication - for our data width (up to 256)  other methods
     //  are slower
     static boolean mMultiply(final int[] ints, final int[] other) {
-        int maxWidth = ints.length;
+        return mMultiply(ints, 0, ints.length, other, 0, other.length);
+    }
+
+    static boolean mMultiply(final int[] ints, final int offset, final int length, final int[] other, final int otherOffset, final int otherLength) {
+        int maxWidth = length;
         Scratchpad pad = SCRATCH.get();
-        // Clear the scratchpad accumulator
-        java.util.Arrays.fill(pad.longAcc, 0L);
+        int[] product = pad.product;
+        java.util.Arrays.fill(product, 0, maxWidth, 0);
+
         boolean overflow = false;
-        // First pass: accumulate raw 64‑bit products into scratchpad longAcc
-        for (int i = 0; i < ints.length; i++) {
-            long aVal = ints[i] & LONG;
+        for (int i = 0; i < length; i++) {
+            long aVal = ints[offset + i] & LONG;
             if (aVal == 0) continue;
-            for (int j = 0; j < other.length; j++) {
-                long bVal = other[j] & LONG;
-                if (bVal == 0) continue;
-                int k = i + j;
-                if (k < maxWidth) {
-                    pad.longAcc[k] += aVal * bVal;
+            long carry = 0;
+            for (int j = 0; j < otherLength; j++) {
+                int targetIdx = i + j;
+                if (targetIdx < maxWidth) {
+                    long prod = aVal * (other[otherOffset + j] & LONG) + (product[targetIdx] & LONG) + carry;
+                    product[targetIdx] = (int) prod;
+                    carry = prod >>> 32;
                 } else {
-                    overflow = true; // overflow beyond allocated width
+                    if (carry != 0) {
+                        overflow = true;
+                        carry = 0;
+                    }
+                    if (other[otherOffset + j] != 0) {
+                        overflow = true;
+                    }
+                }
+            }
+            int carryIdx = i + otherLength;
+            while (carry != 0) {
+                if (carryIdx < maxWidth) {
+                    long sum = (product[carryIdx] & LONG) + carry;
+                    product[carryIdx] = (int) sum;
+                    carry = sum >>> 32;
+                    carryIdx++;
+                } else {
+                    overflow = true;
+                    break;
                 }
             }
         }
-        // Second pass: normalize carries back into ints
-        long carry = 0;
-        for (int k = 0; k < maxWidth; k++) {
-            long sum = pad.longAcc[k] + carry;
-            ints[k] = (int) sum;
-            carry = sum >>> 32;
-        }
-        if (carry != 0) {
-            overflow = true;
-        }
+
+        System.arraycopy(product, 0, ints, offset, maxWidth);
         return overflow;
     }
 
@@ -627,24 +777,33 @@ final class Arrays {
     // =========================================================================
 
     static int[] divide(final int[] a, final int[] b) {
-        int[] out = copyOf(a, a.length);
-        mDivide(out, b);
+        return divide(a, 0, a.length, b, 0, b.length);
+    }
+
+    static int[] divide(final int[] a, final int aOffset, final int aLength, final int[] b, final int bOffset, final int bLength) {
+        int[] out = new int[aLength];
+        System.arraycopy(a, aOffset, out, 0, aLength);
+        mDivide(out, 0, aLength, b, bOffset, bLength);
         return out;
     }
 
     static boolean mDivide(final int[] ints, final int[] other) {
-        if (isZero(other)) throw new ArithmeticException("divide by zero");
-        if (isZero(ints)) {
+        return mDivide(ints, 0, ints.length, other, 0, other.length);
+    }
+
+    static boolean mDivide(final int[] ints, final int offset, final int length, final int[] other, final int otherOffset, final int otherLength) {
+        if (isZero(other, otherOffset, otherLength)) throw new ArithmeticException("divide by zero");
+        if (isZero(ints, offset, length)) {
             return false;
         }
-        int cmp = compareActive(ints, other);
+        int cmp = compareActive(ints, offset, length, other, otherOffset, otherLength);
         if (cmp < 0) {
-            java.util.Arrays.fill(ints, 0);
+            java.util.Arrays.fill(ints, offset, offset + length, 0);
             return false;
         }
         if (cmp == 0) {
-            java.util.Arrays.fill(ints, 0);
-            ints[0] = 1;
+            java.util.Arrays.fill(ints, offset, offset + length, 0);
+            ints[offset] = 1;
             return false;
         }
 
@@ -653,47 +812,59 @@ final class Arrays {
         java.util.Arrays.fill(pad.rem, 0);
         java.util.Arrays.fill(pad.d, 0);
 
-        int otherEnd = other.length - 1;
-        while (otherEnd >= 0 && other[otherEnd] == 0) {
+        int otherEnd = otherLength - 1;
+        while (otherEnd >= 0 && other[otherOffset + otherEnd] == 0) {
             otherEnd--;
         }
         int otherActiveLen = otherEnd + 1;
-        System.arraycopy(other, 0, pad.d, 0, otherActiveLen);
+        System.arraycopy(other, otherOffset, pad.d, 0, otherActiveLen);
 
         int qints;
+        int[] tempInts = pad.divA;
+        java.util.Arrays.fill(tempInts, 0);
+        System.arraycopy(ints, offset, tempInts, 0, length);
+
         if (otherActiveLen == 1) {
-            Division.div(ints, ints.length, pad.d[0], pad.quo, pad.rem);
-            qints = ints.length;
+            Division.div(tempInts, length, pad.d[0], pad.quo, pad.rem);
+            qints = length;
         } else if (otherActiveLen == 2) {
             final long divisor = ((pad.d[1] & LONG) << 32) | (pad.d[0] & LONG);
-            Division.div(ints, ints.length, divisor, pad.quo, pad.divRem);
-            qints = ints.length - 1;
+            Division.div(tempInts, length, divisor, pad.quo, pad.divRem);
+            qints = length - 1;
         } else {
-            Division.div(ints, ints.length, pad.d, otherActiveLen, pad.quo, pad.divRem, pad.divScr);
+            Division.div(tempInts, length, pad.d, otherActiveLen, pad.quo, pad.divRem, pad.divScr);
             int places = Integer.numberOfLeadingZeros(pad.d[otherActiveLen - 1]);
-            int remLen = ints.length + 1;
-            if (0 < places && places > Integer.numberOfLeadingZeros(ints[ints.length - 1])) {
-                remLen = ints.length + 2;
+            int remLen = length + 1;
+            if (0 < places && places > Integer.numberOfLeadingZeros(tempInts[length - 1])) {
+                remLen = length + 2;
             }
             qints = remLen - otherActiveLen;
         }
 
-        int len = ints.length;
-        java.util.Arrays.fill(ints, 0);
-        int copyLen = Math.min(qints, len);
-        System.arraycopy(pad.quo, 0, ints, 0, copyLen);
+        java.util.Arrays.fill(ints, offset, offset + length, 0);
+        int copyLen = Math.min(qints, length);
+        System.arraycopy(pad.quo, 0, ints, offset, copyLen);
         return false;
     }
 
     static int[] mod(final int[] a, final int[] b) {
-        int[] out = copyOf(a, a.length);
-        mMod(out, b);
+        return mod(a, 0, a.length, b, 0, b.length);
+    }
+
+    static int[] mod(final int[] a, final int aOffset, final int aLength, final int[] b, final int bOffset, final int bLength) {
+        int[] out = new int[aLength];
+        System.arraycopy(a, aOffset, out, 0, aLength);
+        mMod(out, 0, aLength, b, bOffset, bLength);
         return out;
     }
 
     static boolean mMod(final int[] ints, final int[] other) {
-        if (isZero(other)) throw new ArithmeticException("modulo by zero");
-        mModInPlace(ints, other);
+        return mMod(ints, 0, ints.length, other, 0, other.length);
+    }
+
+    static boolean mMod(final int[] ints, final int offset, final int length, final int[] other, final int otherOffset, final int otherLength) {
+        if (isZero(other, otherOffset, otherLength)) throw new ArithmeticException("modulo by zero");
+        mModInPlace(ints, offset, length, other, otherOffset, otherLength);
         return false;
     }
 
@@ -706,10 +877,11 @@ final class Arrays {
      * @return a two-dimensional array where index 0 is the quotient and index 1 is the remainder
      */
     static int[][] divmod(final int[] a, final long b) {
-        int[] q = copyOf(a, a.length);
-        int[] r = copyOf(a, a.length);
-        mDivmod(q, r, b);
-        return new int[][]{q, r};
+        return divmod(a, 0, a.length, b);
+    }
+
+    static int[][] divmod(final int[] a, final int offset, final int length, final long b) {
+        return divmod(a, offset, length, valueOf(b, length), 0, length);
     }
 
     /**
@@ -721,9 +893,15 @@ final class Arrays {
      * @return a two-dimensional array where index 0 is the quotient and index 1 is the remainder
      */
     static int[][] divmod(final int[] a, final int[] b) {
-        int[] q = copyOf(a, a.length);
-        int[] r = copyOf(a, a.length);
-        mDivmod(q, r, b);
+        return divmod(a, 0, a.length, b, 0, b.length);
+    }
+
+    static int[][] divmod(final int[] a, final int aOffset, final int aLength, final int[] b, final int bOffset, final int bLength) {
+        int[] q = new int[aLength];
+        int[] r = new int[aLength];
+        System.arraycopy(a, aOffset, q, 0, aLength);
+        System.arraycopy(a, aOffset, r, 0, aLength);
+        mDivmod(q, 0, aLength, r, 0, aLength, b, bOffset, bLength);
         return new int[][]{q, r};
     }
 
@@ -737,7 +915,11 @@ final class Arrays {
      * @return false (overflow flag not used)
      */
     static boolean mDivmod(final int[] q, final int[] r, final long b) {
-        return mDivmod(q, r, valueOf(b, q.length));
+        return mDivmod(q, 0, q.length, r, 0, r.length, b);
+    }
+
+    static boolean mDivmod(final int[] q, final int qOffset, final int qLength, final int[] r, final int rOffset, final int rLength, final long b) {
+        return mDivmod(q, qOffset, qLength, r, rOffset, rLength, valueOf(b, qLength), 0, qLength);
     }
 
     /**
@@ -750,26 +932,34 @@ final class Arrays {
      * @return false (overflow flag not used)
      */
     static boolean mDivmod(final int[] q, final int[] r, final int[] b) {
-        mDivide(q, b);
-        mMod(r, b);
+        return mDivmod(q, 0, q.length, r, 0, r.length, b, 0, b.length);
+    }
+
+    static boolean mDivmod(final int[] q, final int qOffset, final int qLength, final int[] r, final int rOffset, final int rLength, final int[] b, final int bOffset, final int bLength) {
+        mDivide(q, qOffset, qLength, b, bOffset, bLength);
+        mMod(r, rOffset, rLength, b, bOffset, bLength);
         return false;
     }
 
     static void mModInPlace(final int[] val, final int[] mod) {
-        if (isZero(val)) {
+        mModInPlace(val, 0, val.length, mod, 0, mod.length);
+    }
+
+    static void mModInPlace(final int[] val, final int valOffset, final int valLength, final int[] mod, final int modOffset, final int modLength) {
+        if (isZero(val, valOffset, valLength)) {
             return;
         }
-        int cmp = compareActive(val, mod);
+        int cmp = compareActive(val, valOffset, valLength, mod, modOffset, modLength);
         if (cmp < 0) {
             return;
         }
         if (cmp == 0) {
-            java.util.Arrays.fill(val, 0);
+            java.util.Arrays.fill(val, valOffset, valOffset + valLength, 0);
             return;
         }
 
-        int modEnd = mod.length - 1;
-        while (modEnd >= 0 && mod[modEnd] == 0) {
+        int modEnd = modLength - 1;
+        while (modEnd >= 0 && mod[modOffset + modEnd] == 0) {
             modEnd--;
         }
         int modActiveLen = modEnd + 1;
@@ -777,41 +967,41 @@ final class Arrays {
             throw new ArithmeticException("modulo by zero");
         }
 
-        int valEnd = val.length - 1;
-        while (valEnd >= 0 && val[valEnd] == 0) {
+        int valEnd = valLength - 1;
+        while (valEnd >= 0 && val[valOffset + valEnd] == 0) {
             valEnd--;
         }
         int activeLen = valEnd + 1;
         if (activeLen == 0) {
-            java.util.Arrays.fill(val, 0);
+            java.util.Arrays.fill(val, valOffset, valOffset + valLength, 0);
             return;
         }
 
         Scratchpad pad = SCRATCH.get();
         java.util.Arrays.fill(pad.a, 0);
-        System.arraycopy(val, 0, pad.a, 0, activeLen);
+        System.arraycopy(val, valOffset, pad.a, 0, activeLen);
 
         java.util.Arrays.fill(pad.d, 0);
-        System.arraycopy(mod, 0, pad.d, 0, modActiveLen);
+        System.arraycopy(mod, modOffset, pad.d, 0, modActiveLen);
 
         java.util.Arrays.fill(pad.quo, 0);
         java.util.Arrays.fill(pad.rem, 0);
 
         if (modActiveLen == 1) {
             Division.div(pad.a, activeLen, pad.d[0], pad.quo, pad.rem);
-            java.util.Arrays.fill(val, 0);
-            val[0] = pad.rem[0];
+            java.util.Arrays.fill(val, valOffset, valOffset + valLength, 0);
+            val[valOffset] = pad.rem[0];
         } else if (modActiveLen == 2) {
             final long divisor = ((pad.d[1] & LONG) << 32) | (pad.d[0] & LONG);
             Division.div(pad.a, activeLen, divisor, pad.quo, pad.divRem);
-            java.util.Arrays.fill(val, 0);
-            int copyLimit = Math.min(2, val.length);
-            System.arraycopy(pad.divRem, 0, val, 0, copyLimit);
+            java.util.Arrays.fill(val, valOffset, valOffset + valLength, 0);
+            int copyLimit = Math.min(2, valLength);
+            System.arraycopy(pad.divRem, 0, val, valOffset, copyLimit);
         } else {
             Division.div(pad.a, activeLen, pad.d, modActiveLen, pad.quo, pad.divRem, pad.divScr);
-            java.util.Arrays.fill(val, 0);
-            int copyLimit = Math.min(modActiveLen, val.length);
-            System.arraycopy(pad.divRem, 0, val, 0, copyLimit);
+            java.util.Arrays.fill(val, valOffset, valOffset + valLength, 0);
+            int copyLimit = Math.min(modActiveLen, valLength);
+            System.arraycopy(pad.divRem, 0, val, valOffset, copyLimit);
         }
     }
 
@@ -821,62 +1011,80 @@ final class Arrays {
 
     // immutable addition modulo: copies the first operand to target width and applies mutable mAddMod
     static int[] addmod(final int[] a, final int[] b, final int[] c) {
-        int[] out = copyOf(a, c.length);
-        mAddMod(out, b, c);
+        return addmod(a, 0, a.length, b, 0, b.length, c, 0, c.length);
+    }
+
+    static int[] addmod(final int[] a, final int aOffset, final int aLength, final int[] b, final int bOffset, final int bLength, final int[] c, final int cOffset, final int cLength) {
+        int[] out = new int[cLength];
+        System.arraycopy(a, aOffset, out, 0, Math.min(aLength, cLength));
+        mAddMod(out, 0, out.length, b, bOffset, bLength, c, cOffset, cLength);
         return out;
     }
 
     // in-place addition modulo mutating 'ints'
     static boolean mAddMod(final int[] ints, final int[] add, final int[] mod) {
-        if (isZero(mod)) throw new ArithmeticException("modulo by zero");
+        return mAddMod(ints, 0, ints.length, add, 0, add.length, mod, 0, mod.length);
+    }
 
-        mModInPlace(ints, mod);
+    static boolean mAddMod(final int[] ints, final int offset, final int length, final int[] add, final int addOffset, final int addLength, final int[] mod, final int modOffset, final int modLength) {
+        if (isZero(mod, modOffset, modLength)) throw new ArithmeticException("modulo by zero");
+
+        mModInPlace(ints, offset, length, mod, modOffset, modLength);
 
         Scratchpad pad = SCRATCH.get();
         int[] tempAdd = pad.tempAdd;
         java.util.Arrays.fill(tempAdd, 0);
-        System.arraycopy(add, 0, tempAdd, 0, add.length);
-        mModInPlace(tempAdd, mod);
+        System.arraycopy(add, addOffset, tempAdd, 0, addLength);
+        mModInPlace(tempAdd, 0, tempAdd.length, mod, modOffset, modLength);
 
-        boolean carry = mAdd(ints, tempAdd);
-        if (carry || compareActive(ints, mod) >= 0) {
-            mSubtract(ints, mod);
+        boolean carry = mAdd(ints, offset, length, tempAdd, 0, tempAdd.length);
+        if (carry || compareActive(ints, offset, length, mod, modOffset, modLength) >= 0) {
+            mSubtract(ints, offset, length, mod, modOffset, modLength);
         }
         return false;
     }
 
     static int[] mulmod(final int[] a, final int[] b, final int[] c) {
-        int[] out = copyOf(a, c.length);
-        mMulMod(out, b, c);
+        return mulmod(a, 0, a.length, b, 0, b.length, c, 0, c.length);
+    }
+
+    static int[] mulmod(final int[] a, final int aOffset, final int aLength, final int[] b, final int bOffset, final int bLength, final int[] c, final int cOffset, final int cLength) {
+        int[] out = new int[cLength];
+        System.arraycopy(a, aOffset, out, 0, Math.min(aLength, cLength));
+        mMulMod(out, 0, out.length, b, bOffset, bLength, c, cOffset, cLength);
         return out;
     }
 
     static boolean mMulMod(final int[] ints, final int[] mul, final int[] mod) {
-        if (isZero(mod)) throw new ArithmeticException("modulo by zero");
+        return mMulMod(ints, 0, ints.length, mul, 0, mul.length, mod, 0, mod.length);
+    }
 
-        mModInPlace(ints, mod);
+    static boolean mMulMod(final int[] ints, final int offset, final int length, final int[] mul, final int mulOffset, final int mulLength, final int[] mod, final int modOffset, final int modLength) {
+        if (isZero(mod, modOffset, modLength)) throw new ArithmeticException("modulo by zero");
+
+        mModInPlace(ints, offset, length, mod, modOffset, modLength);
 
         Scratchpad pad = SCRATCH.get();
         int[] tempMul = pad.tempMul;
         java.util.Arrays.fill(tempMul, 0);
-        System.arraycopy(mul, 0, tempMul, 0, mul.length);
-        mModInPlace(tempMul, mod);
+        System.arraycopy(mul, mulOffset, tempMul, 0, mulLength);
+        mModInPlace(tempMul, 0, tempMul.length, mod, modOffset, modLength);
 
         int[] tempRes;
-        if (ints.length == 4) {
+        if (length == 4) {
             tempRes = pad.tempRes8;
         } else  {
             tempRes = pad.tempRes16;
         }
         java.util.Arrays.fill(tempRes, 0);
-        System.arraycopy(ints, 0, tempRes, 0, ints.length);
+        System.arraycopy(ints, offset, tempRes, 0, length);
 
-        mMultiply(tempRes, tempMul);
+        mMultiply(tempRes, 0, tempRes.length, tempMul, 0, tempMul.length);
 
-        mModInPlace(tempRes, mod);
+        mModInPlace(tempRes, 0, tempRes.length, mod, modOffset, modLength);
 
-        java.util.Arrays.fill(ints, 0);
-        System.arraycopy(tempRes, 0, ints, 0, ints.length);
+        java.util.Arrays.fill(ints, offset, offset + length, 0);
+        System.arraycopy(tempRes, 0, ints, offset, length);
         return false;
     }
 
@@ -885,19 +1093,31 @@ final class Arrays {
     // =========================================================================
 
     static int[] square(final int[] a, boolean[] overflowHolder) {
-        int[] padded = copyOf(a, a.length);
-        return multiply(padded, padded, overflowHolder);
+        return square(a, 0, a.length, overflowHolder);
+    }
+
+    static int[] square(final int[] a, final int offset, final int length, boolean[] overflowHolder) {
+        int[] padded = new int[length];
+        System.arraycopy(a, offset, padded, 0, length);
+        return multiply(padded, 0, length, padded, 0, length, overflowHolder);
     }
 
     static int[] square(final int[] a) {
-        int[] padded = copyOf(a, a.length);
-        return multiply(padded, padded);
+        return square(a, 0, a.length);
+    }
+
+    static int[] square(final int[] a, final int offset, final int length) {
+        return square(a, offset, length, new boolean[1]);
     }
 
     static int getLowestSetBit(final int[] ints) {
-        for (int i = 0; i < ints.length; i++) {
-            if (ints[i] != 0) {
-                return i * 32 + Integer.numberOfTrailingZeros(ints[i]);
+        return getLowestSetBit(ints, 0, ints.length);
+    }
+
+    static int getLowestSetBit(final int[] ints, final int offset, final int length) {
+        for (int i = 0; i < length; i++) {
+            if (ints[offset + i] != 0) {
+                return i * 32 + Integer.numberOfTrailingZeros(ints[offset + i]);
             }
         }
         return -1;
@@ -908,27 +1128,36 @@ final class Arrays {
     }
 
     static int[] pow(int[] a, int exp, boolean[] overflowHolder) {
-        int[] out = copyOf(a, a.length);
-        overflowHolder[0] = mPow(out, exp);
+        return pow(a, 0, a.length, exp, overflowHolder);
+    }
+
+    static int[] pow(int[] a, int offset, int length, int exp, boolean[] overflowHolder) {
+        int[] out = new int[length];
+        System.arraycopy(a, offset, out, 0, length);
+        overflowHolder[0] = mPow(out, 0, length, exp);
         return out;
     }
 
     static boolean mPow(final int[] ints, final int exp) {
+        return mPow(ints, 0, ints.length, exp);
+    }
+
+    static boolean mPow(final int[] ints, final int offset, final int length, final int exp) {
         if (exp < 0) throw new ArithmeticException("Negative exponent");
         if (exp == 0) {
-            java.util.Arrays.fill(ints, 0);
-            ints[0] = 1;
+            java.util.Arrays.fill(ints, offset, offset + length, 0);
+            ints[offset] = 1;
             return false;
         }
-        if (isZero(ints)) {
+        if (isZero(ints, offset, length)) {
             return false;
         }
-        if (ints.length == 1 && ints[0] == 1) {
+        if (length == 1 && ints[offset] == 1) {
             return false;
         }
 
-        final int maxWidth = ints.length;
-        final int lo = getLowestSetBit(ints);
+        final int maxWidth = length;
+        final int lo = getLowestSetBit(ints, offset, length);
 
         Scratchpad pad = SCRATCH.get();
         int[] a;
@@ -958,7 +1187,7 @@ final class Arrays {
         }
 
         java.util.Arrays.fill(a, 0);
-        System.arraycopy(ints, 0, a, 0, maxWidth);
+        System.arraycopy(ints, offset, a, 0, maxWidth);
 
         boolean overflowVal = false;
 
@@ -966,7 +1195,7 @@ final class Arrays {
         if (exp == 2) {
             java.util.Arrays.fill(res, 0);
             System.arraycopy(a, 0, res, 0, maxWidth);
-            overflowVal = mMultiply(res, res);
+            overflowVal = mMultiply(res, 0, res.length, res, 0, res.length);
             resultArr = res;
         } else {
             long shift = (long) lo * exp;
@@ -976,17 +1205,17 @@ final class Arrays {
                 resultArr = res;
             } else {
                 if (0 < lo) {
-                    mShiftRight(a, lo);
+                    mShiftRight(a, 0, a.length, lo);
                 }
 
-                final int bits = bitLength(a);
+                final int bits = bitLength(a, 0, a.length);
                 if (bits == 1) {
                     boolean overflow = (lo * exp >= maxWidth * 32);
                     overflowVal = overflow;
                     java.util.Arrays.fill(res, 0);
                     res[0] = 1;
                     if (0 < lo) {
-                        mShiftLeft(res, lo * exp);
+                        mShiftLeft(res, 0, res.length, lo * exp);
                     }
                     resultArr = res;
                 } else {
@@ -1016,7 +1245,7 @@ final class Arrays {
                                 }
                             } else {
                                 res[0] = (int) outVal;
-                                mShiftLeft(res, (int) shift);
+                                mShiftLeft(res, 0, res.length, (int) shift);
                             }
                         } else {
                             int outBits = 64 - Long.numberOfLeadingZeros(outVal);
@@ -1036,7 +1265,7 @@ final class Arrays {
                             if ((e & 1) == 1) {
                                 java.util.Arrays.fill(tempD, 0);
                                 System.arraycopy(out, 0, tempD, 0, maxWidth);
-                                boolean stepOverflow = mMultiply(tempD, a);
+                                boolean stepOverflow = mMultiply(tempD, 0, tempD.length, a, 0, a.length);
                                 if (stepOverflow) {
                                     overflow = true;
                                 }
@@ -1045,7 +1274,7 @@ final class Arrays {
                             if ((e >>>= 1) != 0) {
                                 java.util.Arrays.fill(tempC, 0);
                                 System.arraycopy(a, 0, tempC, 0, maxWidth);
-                                boolean stepOverflow = mMultiply(tempC, tempC);
+                                boolean stepOverflow = mMultiply(tempC, 0, tempC.length, tempC, 0, tempC.length);
                                 if (stepOverflow) {
                                     overflow = true;
                                 }
@@ -1054,10 +1283,10 @@ final class Arrays {
                         }
 
                         if (0 < lplaces) {
-                            if (!isZero(out) && (lplaces >= maxWidth * 32 || bitLength(out) + lplaces > maxWidth * 32)) {
+                            if (!isZero(out, 0, out.length) && (lplaces >= maxWidth * 32 || bitLength(out, 0, out.length) + lplaces > maxWidth * 32)) {
                                 overflow = true;
                             }
-                            mShiftLeft(out, lplaces);
+                            mShiftLeft(out, 0, out.length, lplaces);
                         }
                         overflowVal = overflow;
                         resultArr = out;
@@ -1066,19 +1295,28 @@ final class Arrays {
             }
         }
 
-        java.util.Arrays.fill(ints, 0);
-        System.arraycopy(resultArr, 0, ints, 0, maxWidth);
+        java.util.Arrays.fill(ints, offset, offset + maxWidth, 0);
+        System.arraycopy(resultArr, 0, ints, offset, maxWidth);
         return overflowVal;
     }
 
     static int[] sqrt(final int[] a) {
-        int[] out = copyOf(a, a.length);
-        mSqrt(out);
+        return sqrt(a, 0, a.length);
+    }
+
+    static int[] sqrt(final int[] a, final int offset, final int length) {
+        int[] out = new int[length];
+        System.arraycopy(a, offset, out, 0, length);
+        mSqrt(out, 0, length);
         return out;
     }
 
     static boolean mSqrt(final int[] ints) {
-        if (isZero(ints)) {
+        return mSqrt(ints, 0, ints.length);
+    }
+
+    static boolean mSqrt(final int[] ints, final int offset, final int length) {
+        if (isZero(ints, offset, length)) {
             return false;
         }
 
@@ -1089,28 +1327,28 @@ final class Arrays {
         java.util.Arrays.fill(op, 0);
         java.util.Arrays.fill(nextY, 0);
 
-        int targetWidth = ints.length;
-        System.arraycopy(ints, 0, op, 0, targetWidth);
+        int targetWidth = length;
+        System.arraycopy(ints, offset, op, 0, targetWidth);
 
-        int bit = bitLength(op);
+        int bit = bitLength(op, 0, targetWidth);
         if (bit == 0) {
-            java.util.Arrays.fill(ints, 0);
+            java.util.Arrays.fill(ints, offset, offset + length, 0);
             return false;
         }
 
-        java.util.Arrays.fill(ints, 0);
-        mSetBit(ints, (bit + 1) / 2);
+        java.util.Arrays.fill(ints, offset, offset + length, 0);
+        mSetBit(ints, offset, length, (bit + 1) / 2);
 
         while (true) {
             System.arraycopy(op, 0, nextY, 0, targetWidth);
-            mDivide(nextY, ints);
-            mAdd(nextY, ints);
-            mShiftRight(nextY, 1);
+            mDivide(nextY, 0, targetWidth, ints, offset, length);
+            mAdd(nextY, 0, targetWidth, ints, offset, length);
+            mShiftRight(nextY, 0, targetWidth, 1);
 
-            if (compareActive(nextY, ints) >= 0) {
+            if (compareActive(nextY, 0, targetWidth, ints, offset, length) >= 0) {
                 break;
             }
-            System.arraycopy(nextY, 0, ints, 0, targetWidth);
+            System.arraycopy(nextY, 0, ints, offset, targetWidth);
         }
 
         return false;
