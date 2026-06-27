@@ -86,9 +86,8 @@ final class Arrays {
         return ints;
     }
 
-    static int[] from(final byte[] bytes, final int[] maxValue) {
+    static int[] from(final byte[] bytes, final int maxWidth) {
         int len = bytes.length;
-        final int maxWidth = maxValue.length;
         final int[] out = new int[maxWidth];
 
         if (len == 0) {
@@ -110,11 +109,19 @@ final class Arrays {
         return out;
     }
 
+    static int[] from(final byte[] bytes, final int[] maxValue) {
+        return from(bytes, maxValue.length);
+    }
+
 
     static BigInteger toBigInteger(final int[] ints) {
+        return toBigInteger(ints, 0, ints.length);
+    }
+
+    static BigInteger toBigInteger(final int[] ints, final int offset, final int length) {
         BigInteger out = BigInteger.ZERO;
-        for (int i = ints.length - 1; i >= 0; i--) {
-            out = out.shiftLeft(32).or(BigInteger.valueOf(ints[i] & LONG));
+        for (int i = length - 1; i >= 0; i--) {
+            out = out.shiftLeft(32).or(BigInteger.valueOf(ints[offset + i] & LONG));
         }
         return out;
     }
@@ -159,6 +166,19 @@ final class Arrays {
 
     static int[] stripLeadingZeroes(final int[] ints) {
         return stripLeadingZeroes(ints, 0);
+    }
+
+    static int[] stripLeadingZeroes(final int[] ints, final int offset, final int length) {
+        int end = length;
+        while (end > 0 && ints[offset + end - 1] == 0) {
+            end--;
+        }
+        if (end == 0) {
+            return new int[1];
+        }
+        int[] out = new int[end];
+        System.arraycopy(ints, offset, out, 0, end);
+        return out;
     }
 
     static byte[] stripLeadingZeroes(final byte[] bs) {

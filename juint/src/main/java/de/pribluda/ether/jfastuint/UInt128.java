@@ -279,123 +279,128 @@ public final class UInt128 extends UInt<UInt128> {
     this.overflow = overflow;
   }
 
+  UInt128(final int[] ints, final int offset, final boolean overflow) {
+    super(ints, offset, MAX_WIDTH);
+    this.overflow = overflow;
+  }
+
   @Override
   public UInt128 mNot() {
-    this.overflow |= Arrays.mNot(this.ints);
+    this.overflow |= Arrays.mNot(this.ints, this.offset, MAX_WIDTH);
     return this;
   }
 
   @Override
   public UInt128 mAnd(final UInt128 other) {
-    this.overflow |= Arrays.mAnd(this.ints, other.ints);
+    this.overflow |= Arrays.mAnd(this.ints, this.offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH);
     return this;
   }
 
   @Override
   public UInt128 mOr(final UInt128 other) {
-    this.overflow |= Arrays.mOr(this.ints, other.ints);
+    this.overflow |= Arrays.mOr(this.ints, this.offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH);
     return this;
   }
 
   @Override
   public UInt128 mXor(final UInt128 other) {
-    this.overflow |= Arrays.mXor(this.ints, other.ints);
+    this.overflow |= Arrays.mXor(this.ints, this.offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH);
     return this;
   }
 
   @Override
   public UInt128 mSetBit(final int bit) {
-    this.overflow |= Arrays.mSetBit(this.ints, bit);
+    this.overflow |= Arrays.mSetBit(this.ints, this.offset, MAX_WIDTH, bit);
     return this;
   }
 
   @Override
   public UInt128 mClearBit(final int bit) {
-    this.overflow |= Arrays.mClearBit(this.ints, bit);
+    this.overflow |= Arrays.mClearBit(this.ints, this.offset, MAX_WIDTH, bit);
     return this;
   }
 
   @Override
   public UInt128 mFlipBit(final int bit) {
-    this.overflow |= Arrays.mFlipBit(this.ints, bit);
+    this.overflow |= Arrays.mFlipBit(this.ints, this.offset, MAX_WIDTH, bit);
     return this;
   }
 
   @Override
   public UInt128 mShiftLeft(final int places) {
-    this.overflow |= Arrays.mShiftLeft(this.ints, places);
+    this.overflow |= Arrays.mShiftLeft(this.ints, this.offset, MAX_WIDTH, places);
     return this;
   }
 
   @Override
   public UInt128 mShiftRight(final int places) {
-    this.overflow |= Arrays.mShiftRight(this.ints, places);
+    this.overflow |= Arrays.mShiftRight(this.ints, this.offset, MAX_WIDTH, places);
     return this;
   }
 
   @Override
   public UInt128 mInc() {
-    this.overflow |= Arrays.mInc(this.ints);
+    this.overflow |= Arrays.mInc(this.ints, this.offset, MAX_WIDTH);
     return this;
   }
 
   @Override
   public UInt128 mDec() {
-    this.overflow |= Arrays.mDec(this.ints);
+    this.overflow |= Arrays.mDec(this.ints, this.offset, MAX_WIDTH);
     return this;
   }
 
   @Override
   public UInt128 mAdd(final UInt128 other) {
-    this.overflow |= Arrays.mAdd(this.ints, other.ints);
+    this.overflow |= Arrays.mAdd(this.ints, this.offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH);
     return this;
   }
 
   @Override
   public UInt128 mSubtract(final UInt128 other) {
-    this.overflow |= Arrays.mSubtract(this.ints, other.ints);
+    this.overflow |= Arrays.mSubtract(this.ints, this.offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH);
     return this;
   }
 
   @Override
   public UInt128 mMultiply(final UInt128 other) {
-    this.overflow |= Arrays.mMultiply(this.ints, other.ints);
+    this.overflow |= Arrays.mMultiply(this.ints, this.offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH);
     return this;
   }
 
   @Override
   public UInt128 mAddMod(final UInt128 add, final UInt128 mod) {
-    this.overflow |= Arrays.mAddMod(this.ints, add.ints, mod.ints);
+    this.overflow |= Arrays.mAddMod(this.ints, this.offset, MAX_WIDTH, add.ints, add.offset, MAX_WIDTH, mod.ints, mod.offset, MAX_WIDTH);
     return this;
   }
 
   @Override
   public UInt128 mMulMod(final UInt128 mul, final UInt128 mod) {
-    this.overflow |= Arrays.mMulMod(this.ints, mul.ints, mod.ints);
+    this.overflow |= Arrays.mMulMod(this.ints, this.offset, MAX_WIDTH, mul.ints, mul.offset, MAX_WIDTH, mod.ints, mod.offset, MAX_WIDTH);
     return this;
   }
 
   @Override
   public UInt128 mPow(final int exp) {
-    this.overflow |= Arrays.mPow(this.ints, exp);
+    this.overflow |= Arrays.mPow(this.ints, this.offset, MAX_WIDTH, exp);
     return this;
   }
 
   @Override
   public UInt128 mSqrt() {
-    this.overflow |= Arrays.mSqrt(this.ints);
+    this.overflow |= Arrays.mSqrt(this.ints, this.offset, MAX_WIDTH);
     return this;
   }
 
   @Override
   public UInt128 mDivide(final UInt128 other) {
-    this.overflow |= Arrays.mDivide(this.ints, other.ints);
+    this.overflow |= Arrays.mDivide(this.ints, this.offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH);
     return this;
   }
 
   @Override
   public UInt128 mMod(final UInt128 other) {
-    this.overflow |= Arrays.mMod(this.ints, other.ints);
+    this.overflow |= Arrays.mMod(this.ints, this.offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH);
     return this;
   }
 }
