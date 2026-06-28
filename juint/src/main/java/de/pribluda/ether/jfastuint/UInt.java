@@ -132,6 +132,8 @@ public abstract class UInt<T extends UInt>
    * {@code this * other}
    */
   public abstract T multiply(T other);
+  public abstract T multiply(int other);
+  public abstract T multiply(long other);
   /**
    * {@code (this * mul) % mod}
    *
@@ -174,6 +176,8 @@ public abstract class UInt<T extends UInt>
    * {@code this + other}
    */
   public abstract T add(T other);
+  public abstract T add(int other);
+  public abstract T add(long other);
   /**
    * {@code (this + add) % mod}
    *
@@ -280,6 +284,8 @@ public abstract class UInt<T extends UInt>
    * @return this object for chaining.
    */
   public abstract T mAdd(T other);
+  public abstract T mAdd(int other);
+  public abstract T mAdd(long other);
 
   /**
    * Adds the specified value to this value, modulo mod, in-place, modifying the backing array.
@@ -298,6 +304,8 @@ public abstract class UInt<T extends UInt>
    * @return this object for chaining.
    */
   public abstract T mMultiply(T other);
+  public abstract T mMultiply(int other);
+  public abstract T mMultiply(long other);
 
   /**
    * Multiplies this value by the specified value, modulo mod, in-place, modifying the backing array.

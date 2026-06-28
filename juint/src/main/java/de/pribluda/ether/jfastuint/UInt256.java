@@ -156,6 +156,16 @@ public final class UInt256 extends UInt<UInt256> {
              new UInt256(Arrays.add(ints, offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH), false)));
   }
 
+  @Override
+  public UInt256 add(final int other) {
+    return other == 0 ? this : new UInt256(Arrays.add(ints, offset, MAX_WIDTH, other), false);
+  }
+
+  @Override
+  public UInt256 add(final long other) {
+    return other == 0 ? this : new UInt256(Arrays.add(ints, offset, MAX_WIDTH, other), false);
+  }
+
   public UInt256 addmod(final UInt256 add, final UInt256 mod) {
     if(mod.isZero()) {
       throw new ArithmeticException("div/mod by zero");
@@ -184,6 +194,26 @@ public final class UInt256 extends UInt<UInt256> {
     }
     boolean[] overflow = new boolean[1];
     int[] res = Arrays.multiply(ints, offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH, overflow);
+    return new UInt256(res, overflow[0]);
+  }
+
+  @Override
+  public UInt256 multiply(final int other) {
+    if (isZero() || other == 0) {
+      return ZERO;
+    }
+    boolean[] overflow = new boolean[1];
+    int[] res = Arrays.multiply(ints, offset, MAX_WIDTH, other, overflow);
+    return new UInt256(res, overflow[0]);
+  }
+
+  @Override
+  public UInt256 multiply(final long other) {
+    if (isZero() || other == 0) {
+      return ZERO;
+    }
+    boolean[] overflow = new boolean[1];
+    int[] res = Arrays.multiply(ints, offset, MAX_WIDTH, other, overflow);
     return new UInt256(res, overflow[0]);
   }
 
@@ -362,6 +392,18 @@ public final class UInt256 extends UInt<UInt256> {
   }
 
   @Override
+  public UInt256 mAdd(final int other) {
+    this.overflow |= Arrays.mAdd(this.ints, this.offset, MAX_WIDTH, other);
+    return this;
+  }
+
+  @Override
+  public UInt256 mAdd(final long other) {
+    this.overflow |= Arrays.mAdd(this.ints, this.offset, MAX_WIDTH, other);
+    return this;
+  }
+
+  @Override
   public UInt256 mSubtract(final UInt256 other) {
     this.overflow |= Arrays.mSubtract(this.ints, this.offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH);
     return this;
@@ -370,6 +412,18 @@ public final class UInt256 extends UInt<UInt256> {
   @Override
   public UInt256 mMultiply(final UInt256 other) {
     this.overflow |= Arrays.mMultiply(this.ints, this.offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH);
+    return this;
+  }
+
+  @Override
+  public UInt256 mMultiply(final int other) {
+    this.overflow |= Arrays.mMultiply(this.ints, this.offset, MAX_WIDTH, other);
+    return this;
+  }
+
+  @Override
+  public UInt256 mMultiply(final long other) {
+    this.overflow |= Arrays.mMultiply(this.ints, this.offset, MAX_WIDTH, other);
     return this;
   }
 

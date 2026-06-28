@@ -706,6 +706,60 @@ public abstract class Properties<T extends UInt<T>> {
   }
 
   @Test
+  public void convenienceAddInt() {
+    for (int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      int val = rnd.nextInt();
+      eq(trunc(xb.add(BigInteger.valueOf(val & Arrays.LONG))), x.add(val));
+
+      T copy = construct(x.toIntArray());
+      copy.mAdd(val);
+      eq(trunc(xb.add(BigInteger.valueOf(val & Arrays.LONG))), copy);
+    }
+  }
+
+  @Test
+  public void convenienceAddLong() {
+    for (int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      long val = rnd.nextLong();
+      BigInteger valBig = BigInteger.valueOf(val & Arrays.LONG).or(BigInteger.valueOf(val >>> 32).shiftLeft(32));
+      eq(trunc(xb.add(valBig)), x.add(val));
+
+      T copy = construct(x.toIntArray());
+      copy.mAdd(val);
+      eq(trunc(xb.add(valBig)), copy);
+    }
+  }
+
+  @Test
+  public void convenienceMultiplyInt() {
+    for (int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      int val = rnd.nextInt();
+      T res = x.multiply(val);
+      eq(trunc(xb.multiply(BigInteger.valueOf(val & Arrays.LONG))), res);
+
+      T copy = construct(x.toIntArray());
+      copy.mMultiply(val);
+      eq(trunc(xb.multiply(BigInteger.valueOf(val & Arrays.LONG))), copy);
+      assertEquals(res.overflow(), copy.overflow());
+    }
+  }
+
+  @Test
+  public void convenienceMultiplyLong() {
+    for (int i = 0; i < SAMPLE_MED; i++, cycle()) {
+      long val = rnd.nextLong();
+      BigInteger valBig = BigInteger.valueOf(val & Arrays.LONG).or(BigInteger.valueOf(val >>> 32).shiftLeft(32));
+      T res = x.multiply(val);
+      eq(trunc(xb.multiply(valBig)), res);
+
+      T copy = construct(x.toIntArray());
+      copy.mMultiply(val);
+      eq(trunc(xb.multiply(valBig)), copy);
+      assertEquals(res.overflow(), copy.overflow());
+    }
+  }
+
+  @Test
   public void add() {
     for(int i = 0; i < SAMPLE_BIG; i++, cycle())
       eq(trunc(xb.add(yb)), x.add(y));

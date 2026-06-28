@@ -647,6 +647,59 @@ final class Arrays {
         return overflow;
     }
 
+    static int[] add(final int[] a, final int aOffset, final int aLength, final int other) {
+        int[] out = new int[aLength];
+        System.arraycopy(a, aOffset, out, 0, aLength);
+        mAdd(out, 0, aLength, other);
+        return out;
+    }
+
+    static int[] add(final int[] a, final int aOffset, final int aLength, final long other) {
+        int[] out = new int[aLength];
+        System.arraycopy(a, aOffset, out, 0, aLength);
+        mAdd(out, 0, aLength, other);
+        return out;
+    }
+
+    static boolean mAdd(final int[] ints, final int offset, final int length, final int other) {
+        if (length == 0) {
+            return other != 0;
+        }
+        long carry = other & LONG;
+        for (int i = 0; i < length && carry != 0; i++) {
+            long sum = (ints[offset + i] & LONG) + carry;
+            ints[offset + i] = (int) sum;
+            carry = sum >>> 32;
+        }
+        return carry != 0;
+    }
+
+    static boolean mAdd(final int[] ints, final int offset, final int length, final long other) {
+        if (length == 0) {
+            return other != 0;
+        }
+        long carry = other & LONG;
+        long sum = (ints[offset] & LONG) + carry;
+        ints[offset] = (int) sum;
+        carry = sum >>> 32;
+
+        if (length > 1) {
+            long nextVal = (other >>> 32) & LONG;
+            sum = (ints[offset + 1] & LONG) + nextVal + carry;
+            ints[offset + 1] = (int) sum;
+            carry = sum >>> 32;
+
+            for (int i = 2; i < length && carry != 0; i++) {
+                sum = (ints[offset + i] & LONG) + carry;
+                ints[offset + i] = (int) sum;
+                carry = sum >>> 32;
+            }
+        } else {
+            return carry != 0 || ((other >>> 32) != 0);
+        }
+        return carry != 0;
+    }
+
     // immutable subtraction: copies the first operand and applies mutable mSubtract
     static int[] sub(final int[] a, final int[] b) {
         return sub(a, 0, a.length, b, 0, b.length);
@@ -739,6 +792,90 @@ final class Arrays {
         System.arraycopy(a, aOffset, out, 0, aLength);
         overflowHolder[0] = mMultiply(out, 0, aLength, b, bOffset, bLength);
         return out;
+    }
+
+    static int[] multiply(int[] a, int aOffset, int aLength, int other, boolean[] overflowHolder) {
+        int[] out = new int[aLength];
+        System.arraycopy(a, aOffset, out, 0, aLength);
+        overflowHolder[0] = mMultiply(out, 0, aLength, other);
+        return out;
+    }
+
+    static int[] multiply(int[] a, int aOffset, int aLength, long other, boolean[] overflowHolder) {
+        int[] out = new int[aLength];
+        System.arraycopy(a, aOffset, out, 0, aLength);
+        overflowHolder[0] = mMultiply(out, 0, aLength, other);
+        return out;
+    }
+
+    static boolean mMultiply(final int[] ints, final int offset, final int length, final int other) {
+        if (length == 0) {
+            return other != 0;
+        }
+        long multiplier = other & LONG;
+        long carry = 0;
+        for (int i = 0; i < length; i++) {
+            long val = ints[offset + i] & LONG;
+            long prod = val * multiplier + carry;
+            ints[offset + i] = (int) prod;
+            carry = prod >>> 32;
+        }
+        return carry != 0;
+    }
+
+    static boolean mMultiply(final int[] ints, final int offset, final int length, final long other) {
+        if (length == 0) {
+            return other != 0;
+        }
+        long multiplierLow = other & LONG;
+        long multiplierHigh = (other >>> 32) & LONG;
+
+        Scratchpad pad = SCRATCH.get();
+        int[] temp = pad.product;
+        java.util.Arrays.fill(temp, 0, length, 0);
+
+        boolean overflow = false;
+
+        // Pass 1: Multiply by multiplierLow
+        if (multiplierLow != 0) {
+            long carry = 0;
+            for (int i = 0; i < length; i++) {
+                long prod = (ints[offset + i] & LONG) * multiplierLow + carry;
+                temp[i] = (int) prod;
+                carry = prod >>> 32;
+            }
+            if (carry != 0) {
+                overflow = true;
+            }
+        }
+
+        // Pass 2: Multiply by multiplierHigh and add
+        if (multiplierHigh != 0) {
+            long carry = 0;
+            for (int i = 0; i < length; i++) {
+                int targetIdx = i + 1;
+                long aVal = ints[offset + i] & LONG;
+                if (targetIdx < length) {
+                    long prod = aVal * multiplierHigh + (temp[targetIdx] & LONG) + carry;
+                    temp[targetIdx] = (int) prod;
+                    carry = prod >>> 32;
+                } else {
+                    if (carry != 0) {
+                        overflow = true;
+                        carry = 0;
+                    }
+                    if (aVal != 0) {
+                        overflow = true;
+                    }
+                }
+            }
+            if (carry != 0) {
+                overflow = true;
+            }
+        }
+
+        System.arraycopy(temp, 0, ints, offset, length);
+        return overflow;
     }
 
     //  uses grammar school multiplication - for our data width (up to 256)  other methods

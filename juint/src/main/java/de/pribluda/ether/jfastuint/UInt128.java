@@ -162,6 +162,16 @@ public final class UInt128 extends UInt<UInt128> {
                  new UInt128(Arrays.add(ints, offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH), false)));
     }
 
+    @Override
+    public UInt128 add(final int other) {
+        return other == 0 ? this : new UInt128(Arrays.add(ints, offset, MAX_WIDTH, other), false);
+    }
+
+    @Override
+    public UInt128 add(final long other) {
+        return other == 0 ? this : new UInt128(Arrays.add(ints, offset, MAX_WIDTH, other), false);
+    }
+
     public UInt128 addmod(final UInt128 add, final UInt128 mod) {
         if (mod.isZero()) {
             throw new ArithmeticException("div/mod by zero");
@@ -187,6 +197,26 @@ public final class UInt128 extends UInt<UInt128> {
 
         boolean[] overflow = new boolean[1];
         int[] res = Arrays.multiply(ints, offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH, overflow);
+        return new UInt128(res, overflow[0]);
+    }
+
+    @Override
+    public UInt128 multiply(final int other) {
+        if (isZero() || other == 0) {
+            return ZERO;
+        }
+        boolean[] overflow = new boolean[1];
+        int[] res = Arrays.multiply(ints, offset, MAX_WIDTH, other, overflow);
+        return new UInt128(res, overflow[0]);
+    }
+
+    @Override
+    public UInt128 multiply(final long other) {
+        if (isZero() || other == 0) {
+            return ZERO;
+        }
+        boolean[] overflow = new boolean[1];
+        int[] res = Arrays.multiply(ints, offset, MAX_WIDTH, other, overflow);
         return new UInt128(res, overflow[0]);
     }
 
@@ -365,6 +395,18 @@ public final class UInt128 extends UInt<UInt128> {
     }
 
     @Override
+    public UInt128 mAdd(final int other) {
+        this.overflow |= Arrays.mAdd(this.ints, this.offset, MAX_WIDTH, other);
+        return this;
+    }
+
+    @Override
+    public UInt128 mAdd(final long other) {
+        this.overflow |= Arrays.mAdd(this.ints, this.offset, MAX_WIDTH, other);
+        return this;
+    }
+
+    @Override
     public UInt128 mSubtract(final UInt128 other) {
         this.overflow |= Arrays.mSubtract(this.ints, this.offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH);
         return this;
@@ -373,6 +415,18 @@ public final class UInt128 extends UInt<UInt128> {
     @Override
     public UInt128 mMultiply(final UInt128 other) {
         this.overflow |= Arrays.mMultiply(this.ints, this.offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH);
+        return this;
+    }
+
+    @Override
+    public UInt128 mMultiply(final int other) {
+        this.overflow |= Arrays.mMultiply(this.ints, this.offset, MAX_WIDTH, other);
+        return this;
+    }
+
+    @Override
+    public UInt128 mMultiply(final long other) {
+        this.overflow |= Arrays.mMultiply(this.ints, this.offset, MAX_WIDTH, other);
         return this;
     }
 
