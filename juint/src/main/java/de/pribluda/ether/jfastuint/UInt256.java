@@ -21,6 +21,10 @@ public final class UInt256 extends UInt<UInt256> {
   public static UInt256 ONE  = new UInt256(Arrays.ONE);
   public static UInt256 TWO  = new UInt256(Arrays.TWO);
 
+  public UInt256(UInt other) {
+    this(other.toIntArray());
+  }
+
   /**
    * Construct from a big-endian {@code int} array.
    *
@@ -85,19 +89,19 @@ public final class UInt256 extends UInt<UInt256> {
   public UInt256(final long v) { super(v, MAX_WIDTH); }
 
   public UInt256 not() {
-    return new UInt256(Arrays.not(ints), false);
+    return new UInt256(Arrays.not(ints, offset, MAX_WIDTH), false);
   }
 
   public UInt256 and(final UInt256 other) {
-    return new UInt256(Arrays.and(ints, other.ints), false);
+    return new UInt256(Arrays.and(ints, offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH), false);
   }
 
   public UInt256 or(final UInt256 other) {
-    return new UInt256(Arrays.or(ints, other.ints), false);
+    return new UInt256(Arrays.or(ints, offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH), false);
   }
 
   public UInt256 xor(final UInt256 other) {
-    return new UInt256(Arrays.xor(ints, other.ints), false);
+    return new UInt256(Arrays.xor(ints, offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH), false);
   }
 
   public UInt256 setBit(final int bit) {
@@ -105,15 +109,15 @@ public final class UInt256 extends UInt<UInt256> {
       throw new ArithmeticException("Negative bit address");
     }
     return ((MAX_WIDTH <= bit >>> 5) ? this :
-            new UInt256(Arrays.setBit(ints, bit), false));
+            new UInt256(Arrays.setBit(ints, offset, MAX_WIDTH, bit), false));
   }
 
   public UInt256 clearBit(final int bit) {
     if(bit < 0) {
       throw new ArithmeticException("Negative bit address");
     }
-    return ((ints.length <= bit >>> 5) ? this :
-            new UInt256(Arrays.clearBit(ints, bit), false));
+    return ((MAX_WIDTH <= bit >>> 5) ? this :
+            new UInt256(Arrays.clearBit(ints, offset, MAX_WIDTH, bit), false));
   }
 
   public UInt256 flipBit(final int bit) {
@@ -121,35 +125,35 @@ public final class UInt256 extends UInt<UInt256> {
        throw new ArithmeticException("Negative bit address");
      }
      return ((MAX_WIDTH <= bit >>> 5) ? this :
-             new UInt256(Arrays.flipBit(ints, bit), false));
+             new UInt256(Arrays.flipBit(ints, offset, MAX_WIDTH, bit), false));
   }
 
   public UInt256 shiftLeft(final int places) {
     return new UInt256(
       0 < places ?
-      Arrays.lshift(ints,  places) :
-      Arrays.rshift(ints, -places), false);
+      Arrays.lshift(ints, offset, MAX_WIDTH, places) :
+      Arrays.rshift(ints, offset, MAX_WIDTH, -places), false);
   }
 
   public UInt256 shiftRight(final int places) {
     return new UInt256(
       0 < places ?
-      Arrays.rshift(ints,  places) :
-      Arrays.lshift(ints, -places), false);
+      Arrays.rshift(ints, offset, MAX_WIDTH, places) :
+      Arrays.lshift(ints, offset, MAX_WIDTH, -places), false);
   }
 
   public UInt256 inc() {
-    return new UInt256(Arrays.inc(ints), false);
+    return new UInt256(Arrays.inc(ints, offset, MAX_WIDTH), false);
   }
 
   public UInt256 dec() {
-    return isZero() ? MAX_VALUE : new UInt256(Arrays.dec(ints), false);
+    return isZero() ? MAX_VALUE : new UInt256(Arrays.dec(ints, offset, MAX_WIDTH), false);
   }
 
   public UInt256 add(final UInt256 other) {
     return (isZero() ? other :
             (other.isZero() ? this :
-             new UInt256(Arrays.add(ints, other.ints), false)));
+             new UInt256(Arrays.add(ints, offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH), false)));
   }
 
   public UInt256 addmod(final UInt256 add, final UInt256 mod) {
@@ -159,7 +163,7 @@ public final class UInt256 extends UInt<UInt256> {
     if(isZero() && add.isZero()) {
       return ZERO;
     }
-    return new UInt256(Arrays.addmod(ints, add.ints, mod.ints), false);
+    return new UInt256(Arrays.addmod(ints, offset, MAX_WIDTH, add.ints, add.offset, MAX_WIDTH, mod.ints, mod.offset, MAX_WIDTH), false);
   }
 
   public UInt256 subtract(final UInt256 other) {
@@ -170,16 +174,16 @@ public final class UInt256 extends UInt<UInt256> {
     return (cmp == 0 ? ZERO :
             new UInt256(
               cmp < 0 ?
-              Arrays.subgt(ints, other.ints) :
-              Arrays.sub  (ints, other.ints), false));
+              Arrays.subgt(ints, offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH) :
+              Arrays.sub  (ints, offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH), false));
   }
 
   public UInt256 multiply(final UInt256 other) {
-    if(ints.length == 0 || other.ints.length == 0) {
+    if(MAX_WIDTH == 0 || other.ints.length == 0) {
       return ZERO;
     }
     boolean[] overflow = new boolean[1];
-    int[] res = Arrays.multiply(ints, other.ints, overflow);
+    int[] res = Arrays.multiply(ints, offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH, overflow);
     return new UInt256(res, overflow[0]);
   }
 
@@ -187,7 +191,7 @@ public final class UInt256 extends UInt<UInt256> {
     if(mod.isZero()) {
       throw new ArithmeticException("div/mod by zero");
     }
-    return new UInt256(Arrays.mulmod(ints, mul.ints, mod.ints), false);
+    return new UInt256(Arrays.mulmod(ints, offset, MAX_WIDTH, mul.ints, mul.offset, MAX_WIDTH, mod.ints, mod.offset, MAX_WIDTH), false);
   }
 
   public UInt256 pow(final int exp) {
@@ -204,7 +208,7 @@ public final class UInt256 extends UInt<UInt256> {
       return this;
     }
     boolean[] overflow = new boolean[1];
-    int[] res = Arrays.pow(ints, exp, overflow);
+    int[] res = Arrays.pow(ints, offset, MAX_WIDTH, exp, overflow);
     return new UInt256(res, overflow[0]);
   }
 
@@ -212,7 +216,7 @@ public final class UInt256 extends UInt<UInt256> {
     if (isZero()) {
       return ZERO;
     }
-    return new UInt256(Arrays.sqrt(ints), false);
+    return new UInt256(Arrays.sqrt(ints, offset, MAX_WIDTH), false);
   }
 
   public UInt256 divide(final UInt256 other) {
@@ -225,7 +229,7 @@ public final class UInt256 extends UInt<UInt256> {
     final int cmp = compareTo(other);
     return (cmp  <  0 ? ZERO :
             (cmp == 0 ? ONE  :
-             new UInt256(Arrays.divide(ints, other.ints), false)));
+             new UInt256(Arrays.divide(ints, offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH), false)));
   }
 
   public UInt256 mod(final UInt256 other) {
@@ -238,7 +242,7 @@ public final class UInt256 extends UInt<UInt256> {
     final int cmp = compareTo(other);
     return (cmp  <  0 ? this :
             (cmp == 0 ? ZERO :
-             new UInt256(Arrays.mod(ints, other.ints), false)));
+             new UInt256(Arrays.mod(ints, offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH), false)));
   }
 
   public UInt256[] divmod(final UInt256 other) {
@@ -256,7 +260,7 @@ public final class UInt256 extends UInt<UInt256> {
       return new UInt256[]{ONE, ZERO};
     }
 
-    final int[][] qr = Arrays.divmod(ints, other.ints);
+    final int[][] qr = Arrays.divmod(ints, offset, MAX_WIDTH, other.ints, other.offset, MAX_WIDTH);
     return new UInt256[]{new UInt256(qr[0], false), new UInt256(qr[1], false)};
   }
 
