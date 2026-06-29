@@ -6,6 +6,8 @@
 - do not expand data type. in case of overflow, abort computation and return overflow flag
 - provide 2 versions of methods. one version constructs new array and calls mutable version which modifies supplied array and returns the new array
 - use threadlocal scrathcpad for temporary data arrays
+- all methods shall work on array slices.  i.e. array and offset and length passed as parameters
+
 
 # Architectural invariants and goals for Uint  Uint128 and Uint256
 - provide basic arythmetic methods from BigInteger
