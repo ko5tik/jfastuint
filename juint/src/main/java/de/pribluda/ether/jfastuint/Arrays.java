@@ -39,6 +39,7 @@ final class Arrays {
         final int[] quo = new int[16];
         final int[] rem = new int[16];
         final int[] product = new int[16];
+        final int[] carry = new int[16];
         final int[] tempAdd = product;
         final int[] tempMul = b;
         final int[] tempRes8 = new int[8];
@@ -60,6 +61,7 @@ final class Arrays {
         final int[] divScr = new int[16];
         // Scratchpad array for 64‑bit accumulator used in multiplication to avoid allocations
         final long[] longAcc = new long[16];
+        final long[] carryAcc = new long[16];
     }
 
     static final ThreadLocal<Scratchpad> SCRATCH = ThreadLocal.withInitial(Scratchpad::new);
@@ -885,48 +887,51 @@ final class Arrays {
     }
 
     static boolean mMultiply(final int[] ints, final int offset, final int length, final int[] other, final int otherOffset, final int otherLength) {
-        int maxWidth = length;
         Scratchpad pad = SCRATCH.get();
-        int[] product = pad.product;
-        java.util.Arrays.fill(product, 0, maxWidth, 0);
+        long[] product = pad.longAcc;
+        long[] carry = pad.carryAcc;
+        java.util.Arrays.fill(product, 0, length, 0);
+        java.util.Arrays.fill(carry, 0, length, 0);
 
+        //  multiply wverything
         boolean overflow = false;
         for (int i = 0; i < length; i++) {
             long aVal = ints[offset + i] & LONG;
-            if (aVal == 0) continue;
-            long carry = 0;
-            for (int j = 0; j < otherLength; j++) {
-                int targetIdx = i + j;
-                if (targetIdx < maxWidth) {
-                    long prod = aVal * (other[otherOffset + j] & LONG) + (product[targetIdx] & LONG) + carry;
-                    product[targetIdx] = (int) prod;
-                    carry = prod >>> 32;
-                } else {
-                    if (carry != 0) {
-                        overflow = true;
-                        carry = 0;
-                    }
+            if (aVal == 0) {
+                continue;
+            }
+
+            int limit = length - i;
+            if (otherLength < limit) {
+                limit = otherLength;
+            } else {
+                for (int j = limit; j < otherLength; j++) {
                     if (other[otherOffset + j] != 0) {
                         overflow = true;
+                        break;
                     }
                 }
             }
-            int carryIdx = i + otherLength;
-            while (carry != 0) {
-                if (carryIdx < maxWidth) {
-                    long sum = (product[carryIdx] & LONG) + carry;
-                    product[carryIdx] = (int) sum;
-                    carry = sum >>> 32;
-                    carryIdx++;
-                } else {
-                    overflow = true;
-                    break;
-                }
+
+            for (int j = 0; j < limit; j++) {
+                long bVal = other[otherOffset + j] & LONG;
+                long prod = aVal * bVal;
+                int resIdx = i + j;
+                product[resIdx] += prod & LONG;
+                carry[resIdx] += prod >>> 32;
             }
         }
 
-        System.arraycopy(product, 0, ints, offset, maxWidth);
-        return overflow;
+        // process carry, first digit does not have any
+        long cc = 0;
+        ints[offset] = (int) product[0];
+        for (int i = 1; i < length; i++) {
+            long res = product[i] + carry[i - 1] + cc;
+            ints[offset + i] = (int) res;
+            cc = res >>> 32;
+        }
+        //  do we have overflow?
+        return overflow ||  cc != 0 || carry[length - 1] != 0;
     }
 
     // =========================================================================
@@ -1230,7 +1235,7 @@ final class Arrays {
         int[] tempRes;
         if (length == 4) {
             tempRes = pad.tempRes8;
-        } else  {
+        } else {
             tempRes = pad.tempRes16;
         }
         java.util.Arrays.fill(tempRes, 0);

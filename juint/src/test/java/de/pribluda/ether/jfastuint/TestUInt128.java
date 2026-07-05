@@ -56,6 +56,21 @@ public class TestUInt128 extends Properties<UInt128> {
     UInt128 res3 = b.multiply(c);
     assertFalse(res3.overflow());
     assertEquals(one.shiftLeft(127), res3);
+
+    // 2^64 * 2^64 = 2^128 (overflows)
+    UInt128 d = one.shiftLeft(64);
+    UInt128 e = one.shiftLeft(64);
+    UInt128 res4 = d.multiply(e);
+    assertTrue(res4.overflow());
+    assertEquals(zero, res4);
+
+
+    // 2^96 * 2^32 = 2^128 (overflows)
+    UInt128 f = one.shiftLeft(96);
+    UInt128 g = one.shiftLeft(32);
+    UInt128 res5 = d.multiply(e);
+    assertTrue(res5.overflow());
+    assertEquals(zero, res5);
   }
 
   @Test
