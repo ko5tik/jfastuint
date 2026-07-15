@@ -891,7 +891,6 @@ final class Arrays {
     }
 
     static boolean mMultiply(final int[] ints, final int offset, final int resultWidth, final int[] other, final int otherOffset, final int otherLength) {
-        Scratchpad pad = SCRATCH.get();
         // check for active length to shorten loops
         final int aActiveLength = activeLength(ints, offset, resultWidth);
         final int otherActiveLength = activeLength(other, otherOffset, otherLength);
@@ -901,6 +900,16 @@ final class Arrays {
             java.util.Arrays.fill(ints, offset, offset + resultWidth, 0);
             return false;
         }
+        //  short circuit paths
+        if (otherActiveLength == 1) {
+            return mMultiply(ints, offset, resultWidth, other[otherOffset]);
+        }
+        if (otherActiveLength == 2) {
+            final long otherVal = ((other[otherOffset + 1] & LONG) << 32) | (other[otherOffset] & LONG);
+            return mMultiply(ints, offset, resultWidth, otherVal);
+        }
+
+        Scratchpad pad = SCRATCH.get();
 
         final boolean overflow = aActiveLength + otherActiveLength - 2 >= resultWidth;
         final int aLength = Math.min(aActiveLength, resultWidth);
@@ -923,8 +932,9 @@ final class Arrays {
             rhsOffset = otherOffset;
         }
 
-        java.util.Arrays.fill(ints, offset, offset + resultWidth, 0);
-        // kind of hack, but we hope that hotspot will aggressively untoll the loop inside
+        // Accumulate into thread-local scratch and copy the finished slice back once.
+        // This keeps the destination window untouched until the final copy, so the
+        // caller no longer pays for a separate pre-clear.
         if (resultWidth == 4) {
             return multiplySlices(ints, offset, 4, pad.a, 0, aLength, rhs, rhsOffset, bLength) || overflow;
         }
@@ -941,7 +951,10 @@ final class Arrays {
                 && otherOffset < offset + length;
     }
 
-    //grammar school multiplication over slices
+    // Grammar-school multiplication over slices.
+    // The result is accumulated in thread-local scratch first, then copied into
+    // the destination slice once. This avoids depending on pre-zeroed dest data
+    // and keeps untouched destination words zero by construction.
     private static boolean multiplySlices(
             final int[] dest,
             final int destOffset,
@@ -955,6 +968,10 @@ final class Arrays {
         if (width == 0 || leftLength == 0 || rightLength == 0) {
             return false;
         }
+
+        Scratchpad pad = SCRATCH.get();
+        final int[] temp = pad.product;
+        java.util.Arrays.fill(temp, 0, width, 0);
 
         boolean overflow = false;
         for (int i = 0; i < leftLength; i++) {
@@ -971,15 +988,17 @@ final class Arrays {
 
             final int limit = Math.min(rightLength, remaining);
             long carry = 0;
-            int destIdx = destOffset + i;
+            // The scratch buffer is slice-relative: index 0 is the current
+            // result's least-significant word, regardless of destOffset.
+            int destIdx = i;
             for (int j = 0; j < limit; j++, destIdx++) {
-                long sum = (dest[destIdx] & LONG) + aVal * (right[rightOffset + j] & LONG) + carry;
-                dest[destIdx] = (int) sum;
+                long sum = (temp[destIdx] & LONG) + aVal * (right[rightOffset + j] & LONG) + carry;
+                temp[destIdx] = (int) sum;
                 carry = sum >>> 32;
             }
-            while (carry != 0 && destIdx < destOffset + width) {
-                long sum = (dest[destIdx] & LONG) + carry;
-                dest[destIdx] = (int) sum;
+            while (carry != 0 && destIdx < width) {
+                long sum = (temp[destIdx] & LONG) + carry;
+                temp[destIdx] = (int) sum;
                 carry = sum >>> 32;
                 destIdx++;
             }
@@ -988,6 +1007,7 @@ final class Arrays {
             }
         }
 
+        System.arraycopy(temp, 0, dest, destOffset, width);
         return overflow;
     }
 
