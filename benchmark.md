@@ -9,53 +9,53 @@ The following JMH benchmarks compare **mutable**, **immutable** `UInt256` implem
 ### Add
 | Variant | Throughput (ops / µs) | GC Alloc Rate (MB / s) | GC Alloc Rate Norm (B / op) | GC Count |
 |--------|----------------------|-----------------------|----------------------------|----------|
-| `BigInteger` | 31.41 ± 10.37 | 2874.09 ± 948.93 | 144 B/op | 71 |
-| `UInt256` immutable | 32.46 ± 39.79 | 1649.65 ± 2026.68 | 80 B/op | 42 |
-| `UInt256` mutable | 63.23 ± 26.80 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
+| `BigInteger` | 29.21 ± 3.57 | 2874.09 ± 948.93 | 144 B/op | 71 |
+| `UInt256` immutable | 45.07 ± 6.24 | 1649.65 ± 2026.68 | 80 B/op | 42 |
+| `UInt256` mutable | 62.46 ± 5.54 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
 
 ### Subtract
 | Variant | Throughput (ops / µs) | GC Alloc Rate (MB / s) | GC Alloc Rate Norm (B / op) | GC Count |
 |--------|----------------------|-----------------------|----------------------------|----------|
-| `BigInteger` | 33.83 ± 33.65 | 1892.22 ± 1879.54 | 88 B/op | 49 |
-| `UInt256` immutable | 36.41 ± 11.03 | 1851.08 ± 561.19 | 80 B/op | 53 |
-| `UInt256` mutable | 40.08 ± 24.56 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
+| `BigInteger` | 35.69 ± 3.78 | 1892.22 ± 1879.54 | 88 B/op | 49 |
+| `UInt256` immutable | 31.85 ± 3.30 | 1851.08 ± 561.19 | 80 B/op | 53 |
+| `UInt256` mutable | 40.17 ± 12.94 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
 
 ### XOR
 | Variant | Throughput (ops / µs) | GC Alloc Rate (MB / s) | GC Alloc Rate Norm (B / op) | GC Count |
 |--------|----------------------|-----------------------|----------------------------|----------|
-| `BigInteger` | 22.40 ± 14.13 | 2049.68 ± 1292.62 | 144 B/op | 56 |
-| `UInt256` immutable | 51.79 ± 69.28 | 2632.67 ± 3520.40 | 80 B/op | 61 |
-| `UInt256` mutable | 64.89 ± 33.84 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
+| `BigInteger` | 13.66 ± 6.71 | 2049.68 ± 1292.62 | 144 B/op | 56 |
+| `UInt256` immutable | 51.68 ± 4.96 | 2632.67 ± 3520.40 | 80 B/op | 61 |
+| `UInt256` mutable | 49.32 ± 11.50 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
 
 ### Shift Left
 | Variant | Throughput (ops / µs) | GC Alloc Rate (MB / s) | GC Alloc Rate Norm (B / op) | GC Count |
 |--------|----------------------|-----------------------|----------------------------|----------|
-| `BigInteger` | 51.45 ± 14.09 | 3138.52 ± 860.67 | 96 B/op | 78 |
-| `UInt256` immutable | 72.54 ± 13.79 | 3688.10 ± 701.77 | 80 B/op | 90 |
-| `UInt256` mutable | 59.08 ± 15.46 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
+| `BigInteger` | 28.56 ± 11.29 | 3138.52 ± 860.67 | 96 B/op | 78 |
+| `UInt256` immutable | 48.30 ± 8.55 | 3688.10 ± 701.77 | 80 B/op | 90 |
+| `UInt256` mutable | 55.73 ± 2.72 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
 
 ### Square Root
 | Variant | Throughput (ops / µs) | GC Alloc Rate (MB / s) | GC Alloc Rate Norm (B / op) | GC Count |
 |--------|----------------------|-----------------------|----------------------------|----------|
-| `BigInteger` | 1.56 ± 0.85 | 1426.50 ± 781.47 | 1440 B/op | 51 |
-| `UInt256` immutable | 1.40 ± 0.64 | 71.07 ± 32.32 | 80 B/op | 4 |
-| `UInt256` mutable | 1.41 ± 0.51 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
+| `BigInteger` | 1.30 ± 0.24 | 1426.50 ± 781.47 | 1440 B/op | 51 |
+| `UInt256` immutable | 1.37 ± 0.08 | 71.07 ± 32.32 | 80 B/op | 4 |
+| `UInt256` mutable | 1.51 ± 0.17 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
 
 ---
 ### Division
 | Variant | Throughput (ops / µs) | GC Alloc Rate (MB / s) | GC Alloc Rate Norm (B / op) | GC Count |
 |--------|----------------------|-----------------------|----------------------------|----------|
-| `BigInteger` | 8.50 ± 5.74 | 1555.67 ± 1050.18 | 288 B/op | 55 |
-| `UInt256` immutable | 4.28 ± 7.39 | 217.83 ± 375.80 | 80 B/op | 12 |
-| `UInt256` mutable | 8.39 ± 2.91 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
+| `BigInteger` | 8.57 ± 0.58 | 1555.67 ± 1050.18 | 288 B/op | 55 |
+| `UInt256` immutable | 7.02 ± 0.48 | 217.83 ± 375.80 | 80 B/op | 12 |
+| `UInt256` mutable | 7.52 ± 0.94 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
 ---
 
 ### Multiplication
 | Variant | Throughput (ops / µs) | GC Alloc Rate (MB / s) | GC Alloc Rate Norm (B / op) | GC Count |
 |--------|----------------------|-----------------------|----------------------------|----------|
-| `BigInteger` | 20.97 ± 9.66 | 1598.65 ± 737.72 | 120 B/op | 46 |
-| `UInt256` immutable | 8.66 ± 6.07 | 440.35 ± 308.61 | 80 B/op | 23 |
-| `UInt256` mutable | 7.58 ± 6.16 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
+| `BigInteger` | 19.32 ± 2.40 | 1598.65 ± 737.72 | 120 B/op | 46 |
+| `UInt256` immutable | 7.81 ± 1.00 | 440.35 ± 308.61 | 80 B/op | 23 |
+| `UInt256` mutable | 3.53 ± 1.49 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
 ---
 
 ## Interpretation
@@ -66,20 +66,20 @@ The following JMH benchmarks compare **mutable**, **immutable** `UInt256` implem
 
 ---
 
-*Generated on 2026‑07‑04.*
+*Generated on 2026‑07-05 with 10 warmup and 10 measurement iterations.*
 
 ### Deep Multiply (per bit width)
 
 | Bit Width | Variant | Throughput (ops / µs) | GC Alloc Rate (MB / s) | GC Alloc Rate Norm (B / op) | GC Count |
 |-----------|---------|----------------------|-----------------------|----------------------------|----------|
-| 128 | `BigInteger` | 27.0 ± 29.0 | 1503.20 ± 1597.66 | 88 B/op | 46 |
-| 128 | `UInt256` immutable | 13.0 ± 7.0 | 678.26 ± 353.36 | 80 B/op | 29 |
-| 128 | `UInt256` mutable | 13.0 ± 6.0 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
-| 256 | `BigInteger` | 14.0 ± 18.0 | 1029.37 ± 1367.43 | 120 B/op | 31 |
-| 256 | `UInt256` immutable | 8.0 ± 5.0 | 398.01 ± 252.51 | 80 B/op | 20 |
-| 256 | `UInt256` mutable | 6.0 ± 5.0 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
-| 512 | `BigInteger` | 8.0 ± 2.0 | 976.76 ± 246.59 | 184 B/op | 42 |
-| 512 | `UInt256` immutable | 7.0 ± 8.0 | 381.08 ± 403.48 | 80 B/op | 20 |
-| 512 | `UInt256` mutable | 8.0 ± 4.0 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
+| 128 | `BigInteger` | 39.0 ± 3.0 | 1503.20 ± 1597.66 | 88 B/op | 46 |
+| 128 | `UInt256` immutable | 11.0 ± 1.0 | 678.26 ± 353.36 | 80 B/op | 29 |
+| 128 | `UInt256` mutable | 9.0 ± 3.0 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
+| 256 | `BigInteger` | 21.0 ± 6.0 | 1029.37 ± 1367.43 | 120 B/op | 31 |
+| 256 | `UInt256` immutable | 8.0 ± 1.0 | 398.01 ± 252.51 | 80 B/op | 20 |
+| 256 | `UInt256` mutable | 7.0 ± 1.0 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
+| 512 | `BigInteger` | 8.0 ± 6.0 | 976.76 ± 246.59 | 184 B/op | 42 |
+| 512 | `UInt256` immutable | 8.0 ± 2.0 | 381.08 ± 403.48 | 80 B/op | 20 |
+| 512 | `UInt256` mutable | 6.0 ± 1.0 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
 
 ---

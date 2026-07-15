@@ -59,9 +59,6 @@ final class Arrays {
         final int[] divQuo = new int[32];
         final int[] divRem = new int[32];
         final int[] divScr = new int[16];
-        // Scratchpad array for 64‑bit accumulator used in multiplication to avoid allocations
-        final long[] longAcc = new long[16];
-        final long[] carryAcc = new long[16];
     }
 
     static final ThreadLocal<Scratchpad> SCRATCH = ThreadLocal.withInitial(Scratchpad::new);
@@ -789,10 +786,21 @@ final class Arrays {
         return multiply(a, 0, a.length, b, 0, b.length, overflowHolder);
     }
 
+    // multiply into new array
     static int[] multiply(int[] a, int aOffset, int aLength, int[] b, int bOffset, int bLength, boolean[] overflowHolder) {
         int[] out = new int[aLength];
-        System.arraycopy(a, aOffset, out, 0, aLength);
-        overflowHolder[0] = mMultiply(out, 0, aLength, b, bOffset, bLength);
+        final int aActiveLength = activeLength(a, aOffset, aLength);
+        final int bActiveLength = activeLength(b, bOffset, bLength);
+        final boolean overflow = aActiveLength != 0 && bActiveLength != 0 && aActiveLength + bActiveLength - 2 >= aLength;
+        if (aLength == 4) {
+            overflowHolder[0] = multiplySlices(out, 0, 4, a, aOffset, aActiveLength, b, bOffset, bActiveLength) | overflow;
+            return out;
+        }
+        if (aLength == 8) {
+            overflowHolder[0] = multiplySlices(out, 0, 8, a, aOffset, aActiveLength, b, bOffset, bActiveLength) | overflow;
+            return out;
+        }
+        overflowHolder[0] = multiplySlices(out, 0, aLength, a, aOffset, aActiveLength, b, bOffset, bActiveLength) | overflow;
         return out;
     }
 
@@ -810,6 +818,7 @@ final class Arrays {
         return out;
     }
 
+    // mutable multiplication by int
     static boolean mMultiply(final int[] ints, final int offset, final int length, final int other) {
         if (length == 0) {
             return other != 0;
@@ -825,6 +834,7 @@ final class Arrays {
         return carry != 0;
     }
 
+    // mutable multiplication by long
     static boolean mMultiply(final int[] ints, final int offset, final int length, final long other) {
         if (length == 0) {
             return other != 0;
@@ -880,58 +890,105 @@ final class Arrays {
         return overflow;
     }
 
-    //  uses grammar school multiplication - for our data width (up to 256)  other methods
-    //  are slower
-    static boolean mMultiply(final int[] ints, final int[] other) {
-        return mMultiply(ints, 0, ints.length, other, 0, other.length);
+    static boolean mMultiply(final int[] ints, final int offset, final int resultWidth, final int[] other, final int otherOffset, final int otherLength) {
+        Scratchpad pad = SCRATCH.get();
+        // check for active length to shorten loops
+        final int aActiveLength = activeLength(ints, offset, resultWidth);
+        final int otherActiveLength = activeLength(other, otherOffset, otherLength);
+
+        //shortcut - result is going to be 0 anyway
+        if (aActiveLength == 0 || otherActiveLength == 0) {
+            java.util.Arrays.fill(ints, offset, offset + resultWidth, 0);
+            return false;
+        }
+
+        final boolean overflow = aActiveLength + otherActiveLength - 2 >= resultWidth;
+        final int aLength = Math.min(aActiveLength, resultWidth);
+        final int bLength = Math.min(otherActiveLength, resultWidth);
+
+        //  move operand to pad.a
+        System.arraycopy(ints, offset, pad.a, 0, aLength);
+        final int[] rhs;
+        final int rhsOffset;
+
+        //  we are doing
+        if (ints == other) {
+            System.arraycopy(other, otherOffset, pad.b, 0, bLength);
+            rhs = pad.b;
+            rhsOffset = 0;
+        } else {
+            rhs = other;
+            rhsOffset = otherOffset;
+        }
+
+        java.util.Arrays.fill(ints, offset, offset + resultWidth, 0);
+        // kind of hack, but we hope that hotspot will aggressively untoll the loop inside
+        if (resultWidth == 4) {
+            return multiplySlices(ints, offset, 4, pad.a, 0, aLength, rhs, rhsOffset, bLength) || overflow;
+        }
+        if (resultWidth == 8) {
+            return multiplySlices(ints, offset, 8, pad.a, 0, aLength, rhs, rhsOffset, bLength) || overflow;
+        }
+        return multiplySlices(ints, offset, resultWidth, pad.a, 0, aLength, rhs, rhsOffset, bLength) || overflow;
+
     }
 
-    static boolean mMultiply(final int[] ints, final int offset, final int length, final int[] other, final int otherOffset, final int otherLength) {
-        Scratchpad pad = SCRATCH.get();
-        long[] product = pad.longAcc;
-        long[] carry = pad.carryAcc;
-        java.util.Arrays.fill(product, 0, length, 0);
-        java.util.Arrays.fill(carry, 0, length, 0);
+    //grammar school multiplication over slices
+    private static boolean multiplySlices(
+            final int[] dest,
+            final int destOffset,
+            final int width,
+            final int[] left,
+            final int leftOffset,
+            final int leftLength,
+            final int[] right,
+            final int rightOffset,
+            final int rightLength) {
+        if (width == 0 || leftLength == 0 || rightLength == 0) {
+            return false;
+        }
 
-        //  multiply wverything
         boolean overflow = false;
-        for (int i = 0; i < length; i++) {
-            long aVal = ints[offset + i] & LONG;
+        for (int i = 0; i < leftLength; i++) {
+            final long aVal = left[leftOffset + i] & LONG;
             if (aVal == 0) {
                 continue;
             }
 
-            int limit = length - i;
-            if (otherLength < limit) {
-                limit = otherLength;
-            } else {
-                for (int j = limit; j < otherLength; j++) {
-                    if (other[otherOffset + j] != 0) {
-                        overflow = true;
-                        break;
-                    }
-                }
+            final int remaining = width - i;
+            if (remaining <= 0) {
+                overflow = true;
+                continue;
             }
 
-            for (int j = 0; j < limit; j++) {
-                long bVal = other[otherOffset + j] & LONG;
-                long prod = aVal * bVal;
-                int resIdx = i + j;
-                product[resIdx] += prod & LONG;
-                carry[resIdx] += prod >>> 32;
+            final int limit = Math.min(rightLength, remaining);
+            long carry = 0;
+            int destIdx = destOffset + i;
+            for (int j = 0; j < limit; j++, destIdx++) {
+                long sum = (dest[destIdx] & LONG) + aVal * (right[rightOffset + j] & LONG) + carry;
+                dest[destIdx] = (int) sum;
+                carry = sum >>> 32;
+            }
+            while (carry != 0 && destIdx < destOffset + width) {
+                long sum = (dest[destIdx] & LONG) + carry;
+                dest[destIdx] = (int) sum;
+                carry = sum >>> 32;
+                destIdx++;
+            }
+            if (carry != 0) {
+                overflow = true;
             }
         }
 
-        // process carry, first digit does not have any
-        long cc = 0;
-        ints[offset] = (int) product[0];
-        for (int i = 1; i < length; i++) {
-            long res = product[i] + carry[i - 1] + cc;
-            ints[offset + i] = (int) res;
-            cc = res >>> 32;
+        return overflow;
+    }
+
+    private static int activeLength(final int[] ints, final int offset, final int length) {
+        int active = length;
+        while (active > 0 && ints[offset + active - 1] == 0) {
+            active--;
         }
-        //  do we have overflow?
-        return overflow ||  cc != 0 || carry[length - 1] != 0;
+        return active;
     }
 
     // =========================================================================

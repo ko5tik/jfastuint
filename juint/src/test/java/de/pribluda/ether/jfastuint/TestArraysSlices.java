@@ -111,4 +111,17 @@ public class TestArraysSlices {
         assertEquals(10, dest[1]);
         assertEquals(0, dest[2]);
     }
+
+    @Test
+    public void testMultiplySelfSlice() {
+        int[] a = {0, 3, 0, 0};
+
+        boolean overflow = Arrays.mMultiply(a, 1, 2, a, 1, 2);
+
+        assertFalse(overflow);
+        assertEquals(9, a[1]);
+        assertEquals(0, a[2]);
+        assertEquals(0, a[0]);
+        assertEquals(0, a[3]);
+    }
 }
