@@ -932,9 +932,8 @@ final class Arrays {
             rhsOffset = otherOffset;
         }
 
-        // Accumulate into thread-local scratch and copy the finished slice back once.
-        // This keeps the destination window untouched until the final copy, so the
-        // caller no longer pays for a separate pre-clear.
+        // The kernel writes the result slice directly, so only the aliasing-safe
+        // operand slices need scratch staging.
         if (resultWidth == 4) {
             return multiplySlices(ints, offset, 4, pad.a, 0, aLength, rhs, rhsOffset, bLength) || overflow;
         }
@@ -951,10 +950,9 @@ final class Arrays {
                 && otherOffset < offset + length;
     }
 
-    // Grammar-school multiplication over slices.
-    // The result is accumulated in thread-local scratch first, then copied into
-    // the destination slice once. This avoids depending on pre-zeroed dest data
-    // and keeps untouched destination words zero by construction.
+    // Diagonal multiplication over slices.
+    // Each output word is written once, directly into the destination slice.
+    // The caller is responsible for any aliasing-safe operand staging.
     private static boolean multiplySlices(
             final int[] dest,
             final int destOffset,
@@ -969,45 +967,39 @@ final class Arrays {
             return false;
         }
 
-        Scratchpad pad = SCRATCH.get();
-        final int[] temp = pad.product;
-        java.util.Arrays.fill(temp, 0, width, 0);
-
         boolean overflow = false;
-        for (int i = 0; i < leftLength; i++) {
-            final long aVal = left[leftOffset + i] & LONG;
-            if (aVal == 0) {
-                continue;
+        final int productWidth = leftLength + rightLength;
+        final int loopLimit = Math.max(width, productWidth);
+
+        long carry = 0;
+        for (int k = 0; k < loopLimit; k++) {
+            long lo = carry;
+            long hi = 0;
+
+            final int leftMin = Math.max(0, k - (rightLength - 1));
+            final int leftMax = Math.min(leftLength - 1, k);
+
+            for (int i = leftMin; i <= leftMax; i++) {
+                final long product = (left[leftOffset + i] & LONG) * (right[rightOffset + (k - i)] & LONG);
+                final long prev = lo;
+                lo += product & LONG;
+                if (Long.compareUnsigned(lo, prev) < 0) {
+                    hi++;
+                }
+                hi += product >>> 32;
             }
 
-            final int remaining = width - i;
-            if (remaining <= 0) {
-                overflow = true;
-                continue;
-            }
-
-            final int limit = Math.min(rightLength, remaining);
-            long carry = 0;
-            // The scratch buffer is slice-relative: index 0 is the current
-            // result's least-significant word, regardless of destOffset.
-            int destIdx = i;
-            for (int j = 0; j < limit; j++, destIdx++) {
-                long sum = (temp[destIdx] & LONG) + aVal * (right[rightOffset + j] & LONG) + carry;
-                temp[destIdx] = (int) sum;
-                carry = sum >>> 32;
-            }
-            while (carry != 0 && destIdx < width) {
-                long sum = (temp[destIdx] & LONG) + carry;
-                temp[destIdx] = (int) sum;
-                carry = sum >>> 32;
-                destIdx++;
-            }
-            if (carry != 0) {
+            carry = hi + (lo >>> 32);
+            if (k < width) {
+                dest[destOffset + k] = (int) lo;
+            } else if (lo != 0 || carry != 0) {
                 overflow = true;
             }
         }
 
-        System.arraycopy(temp, 0, dest, destOffset, width);
+        if (carry != 0) {
+            overflow = true;
+        }
         return overflow;
     }
 
