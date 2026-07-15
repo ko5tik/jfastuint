@@ -911,8 +911,10 @@ final class Arrays {
         final int[] rhs;
         final int rhsOffset;
 
-        //  we are doing
-        if (ints == other) {
+        // Only copy the right-hand slice when it can be clobbered by zeroing the
+        // destination window. If it is a disjoint slice from the same backing
+        // array, we can read it directly.
+        if (ints == other && rangesOverlap(offset, resultWidth, otherOffset, bLength)) {
             System.arraycopy(other, otherOffset, pad.b, 0, bLength);
             rhs = pad.b;
             rhsOffset = 0;
@@ -931,6 +933,12 @@ final class Arrays {
         }
         return multiplySlices(ints, offset, resultWidth, pad.a, 0, aLength, rhs, rhsOffset, bLength) || overflow;
 
+    }
+
+    private static boolean rangesOverlap(final int offset, final int length, final int otherOffset, final int otherLength) {
+        return length > 0 && otherLength > 0
+                && offset < otherOffset + otherLength
+                && otherOffset < offset + length;
     }
 
     //grammar school multiplication over slices

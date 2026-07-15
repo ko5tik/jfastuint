@@ -124,4 +124,19 @@ public class TestArraysSlices {
         assertEquals(0, a[0]);
         assertEquals(0, a[3]);
     }
+
+    @Test
+    public void testMultiplySameArrayDifferentDisjointSlices() {
+        int[] a = {0, 2, 3, 0, 5, 0};
+
+        boolean overflow = Arrays.mMultiply(a, 1, 2, a, 4, 2);
+
+        assertFalse(overflow);
+        assertEquals(10, a[1]);
+        assertEquals(15, a[2]);
+        assertEquals(0, a[0]);
+        assertEquals(0, a[3]);
+        assertEquals(5, a[4]);
+        assertEquals(0, a[5]);
+    }
 }
