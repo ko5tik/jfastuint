@@ -36,7 +36,6 @@ final class Arrays {
         final int[] b = new int[16];
         final int[] d = new int[16];
         final int[] quo = new int[16];
-        final int[] rem = new int[16];
         final int[] product = new int[16];
         final int[] tempRes = new int[16];
         final int[] powA = new int[8];
@@ -1043,7 +1042,6 @@ final class Arrays {
 
         Scratchpad pad = SCRATCH.get();
         java.util.Arrays.fill(pad.quo, 0);
-        java.util.Arrays.fill(pad.rem, 0);
         java.util.Arrays.fill(pad.d, 0);
 
         int otherEnd = otherLength - 1;
@@ -1059,7 +1057,7 @@ final class Arrays {
         System.arraycopy(ints, offset, tempInts, 0, length);
 
         if (otherActiveLen == 1) {
-            Division.div(tempInts, length, pad.d[0], pad.quo, pad.rem);
+            Division.div(tempInts, length, pad.d[0], pad.quo, pad.divRem);
             qints = length;
         } else if (otherActiveLen == 2) {
             final long divisor = ((pad.d[1] & LONG) << 32) | (pad.d[0] & LONG);
@@ -1219,12 +1217,10 @@ final class Arrays {
         System.arraycopy(mod, modOffset, pad.d, 0, modActiveLen);
 
         java.util.Arrays.fill(pad.quo, 0);
-        java.util.Arrays.fill(pad.rem, 0);
-
         if (modActiveLen == 1) {
-            Division.div(pad.a, activeLen, pad.d[0], pad.quo, pad.rem);
+            Division.div(pad.a, activeLen, pad.d[0], pad.quo, pad.divRem);
             java.util.Arrays.fill(val, valOffset, valOffset + valLength, 0);
-            val[valOffset] = pad.rem[0];
+            val[valOffset] = pad.divRem[0];
         } else if (modActiveLen == 2) {
             final long divisor = ((pad.d[1] & LONG) << 32) | (pad.d[0] & LONG);
             Division.div(pad.a, activeLen, divisor, pad.quo, pad.divRem);
