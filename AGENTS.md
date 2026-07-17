@@ -12,4 +12,4 @@
 # Architectural invariants and goals for Uint  Uint128 and Uint256
 - provide basic arythmetic methods from BigInteger
 - delegate to  Arrays class
-- provide 2 variants of methods -  imutable (creates new instance form immutable Arrays class mehtod)  and mutable (modifies own array)
+- provide 2 variants of methods -  imutable (creates new instance form immutable Arrays class mehtod)  and mutable (modifies own array)[TestFactories.java](juint/src/test/java/de/pribluda/ether/jfastuint/TestFactories.java)

@@ -34,29 +34,17 @@ final class Arrays {
     static final class Scratchpad {
         final int[] a = new int[16];
         final int[] b = new int[16];
-        final int[] c = new int[16];
         final int[] d = new int[16];
         final int[] quo = new int[16];
         final int[] rem = new int[16];
         final int[] product = new int[16];
-        final int[] carry = new int[16];
-        final int[] tempAdd = product;
-        final int[] tempMul = b;
-        final int[] tempRes8 = new int[8];
-        final int[] tempRes16 = new int[16];
-        final int[] a4 = new int[4];
-        final int[] a8 = new int[8];
-        final int[] b4 = new int[4];
-        final int[] b8 = new int[8];
-        final int[] c4 = new int[4];
-        final int[] c8 = new int[8];
-        final int[] d4 = new int[4];
-        final int[] d8 = new int[8];
-        final int[] r4 = new int[4];
-        final int[] r8 = new int[8];
+        final int[] tempRes = new int[16];
+        final int[] powA = new int[8];
+        final int[] powB = new int[8];
+        final int[] powC = new int[8];
+        final int[] powD = new int[8];
+        final int[] powR = new int[8];
         final int[] divA = new int[16];
-        final int[] divB = new int[16];
-        final int[] divQuo = new int[32];
         final int[] divRem = new int[32];
         final int[] divScr = new int[16];
     }
@@ -1278,7 +1266,7 @@ final class Arrays {
         mModInPlace(ints, offset, length, mod, modOffset, modLength);
 
         Scratchpad pad = SCRATCH.get();
-        int[] tempAdd = pad.tempAdd;
+        int[] tempAdd = pad.product;
         java.util.Arrays.fill(tempAdd, 0);
         System.arraycopy(add, addOffset, tempAdd, 0, addLength);
         mModInPlace(tempAdd, 0, tempAdd.length, mod, modOffset, modLength);
@@ -1311,23 +1299,19 @@ final class Arrays {
         mModInPlace(ints, offset, length, mod, modOffset, modLength);
 
         Scratchpad pad = SCRATCH.get();
-        int[] tempMul = pad.tempMul;
+        int[] tempMul = pad.b;
         java.util.Arrays.fill(tempMul, 0);
         System.arraycopy(mul, mulOffset, tempMul, 0, mulLength);
         mModInPlace(tempMul, 0, tempMul.length, mod, modOffset, modLength);
 
-        int[] tempRes;
-        if (length == 4) {
-            tempRes = pad.tempRes8;
-        } else {
-            tempRes = pad.tempRes16;
-        }
+        int[] tempRes = pad.tempRes;
+        final int tempResWidth = length == 4 ? 8 : tempRes.length;
         java.util.Arrays.fill(tempRes, 0);
         System.arraycopy(ints, offset, tempRes, 0, length);
 
-        mMultiply(tempRes, 0, tempRes.length, tempMul, 0, tempMul.length);
+        mMultiply(tempRes, 0, tempResWidth, tempMul, 0, tempMul.length);
 
-        mModInPlace(tempRes, 0, tempRes.length, mod, modOffset, modLength);
+        mModInPlace(tempRes, 0, tempResWidth, mod, modOffset, modLength);
 
         java.util.Arrays.fill(ints, offset, offset + length, 0);
         System.arraycopy(tempRes, 0, ints, offset, length);
@@ -1412,18 +1396,12 @@ final class Arrays {
         int[] tempD;
         int[] res;
 
-        if (maxWidth == 4) {
-            a = pad.a4;
-            out = pad.b4;
-            tempC = pad.c4;
-            tempD = pad.d4;
-            res = pad.r4;
-        } else if (maxWidth == 8) {
-            a = pad.a8;
-            out = pad.b8;
-            tempC = pad.c8;
-            tempD = pad.d8;
-            res = pad.r8;
+        if (maxWidth <= 8) {
+            a = pad.powA;
+            out = pad.powB;
+            tempC = pad.powC;
+            tempD = pad.powD;
+            res = pad.powR;
         } else {
             a = new int[maxWidth];
             out = new int[maxWidth];
@@ -1441,7 +1419,7 @@ final class Arrays {
         if (exp == 2) {
             java.util.Arrays.fill(res, 0);
             System.arraycopy(a, 0, res, 0, maxWidth);
-            overflowVal = mMultiply(res, 0, res.length, res, 0, res.length);
+            overflowVal = mMultiply(res, 0, maxWidth, res, 0, maxWidth);
             resultArr = res;
         } else {
             long shift = (long) lo * exp;
@@ -1451,17 +1429,17 @@ final class Arrays {
                 resultArr = res;
             } else {
                 if (0 < lo) {
-                    mShiftRight(a, 0, a.length, lo);
+                    mShiftRight(a, 0, maxWidth, lo);
                 }
 
-                final int bits = bitLength(a, 0, a.length);
+                final int bits = bitLength(a, 0, maxWidth);
                 if (bits == 1) {
                     boolean overflow = (lo * exp >= maxWidth * 32);
                     overflowVal = overflow;
                     java.util.Arrays.fill(res, 0);
                     res[0] = 1;
                     if (0 < lo) {
-                        mShiftLeft(res, 0, res.length, lo * exp);
+                        mShiftLeft(res, 0, maxWidth, lo * exp);
                     }
                     resultArr = res;
                 } else {
@@ -1491,7 +1469,7 @@ final class Arrays {
                                 }
                             } else {
                                 res[0] = (int) outVal;
-                                mShiftLeft(res, 0, res.length, (int) shift);
+                                mShiftLeft(res, 0, maxWidth, (int) shift);
                             }
                         } else {
                             int outBits = 64 - Long.numberOfLeadingZeros(outVal);
@@ -1511,7 +1489,7 @@ final class Arrays {
                             if ((e & 1) == 1) {
                                 java.util.Arrays.fill(tempD, 0);
                                 System.arraycopy(out, 0, tempD, 0, maxWidth);
-                                boolean stepOverflow = mMultiply(tempD, 0, tempD.length, a, 0, a.length);
+                                boolean stepOverflow = mMultiply(tempD, 0, maxWidth, a, 0, maxWidth);
                                 if (stepOverflow) {
                                     overflow = true;
                                 }
@@ -1520,7 +1498,7 @@ final class Arrays {
                             if ((e >>>= 1) != 0) {
                                 java.util.Arrays.fill(tempC, 0);
                                 System.arraycopy(a, 0, tempC, 0, maxWidth);
-                                boolean stepOverflow = mMultiply(tempC, 0, tempC.length, tempC, 0, tempC.length);
+                                boolean stepOverflow = mMultiply(tempC, 0, maxWidth, tempC, 0, maxWidth);
                                 if (stepOverflow) {
                                     overflow = true;
                                 }
@@ -1529,10 +1507,10 @@ final class Arrays {
                         }
 
                         if (0 < lplaces) {
-                            if (!isZero(out, 0, out.length) && (lplaces >= maxWidth * 32 || bitLength(out, 0, out.length) + lplaces > maxWidth * 32)) {
+                            if (!isZero(out, 0, maxWidth) && (lplaces >= maxWidth * 32 || bitLength(out, 0, maxWidth) + lplaces > maxWidth * 32)) {
                                 overflow = true;
                             }
-                            mShiftLeft(out, 0, out.length, lplaces);
+                            mShiftLeft(out, 0, maxWidth, lplaces);
                         }
                         overflowVal = overflow;
                         resultArr = out;
