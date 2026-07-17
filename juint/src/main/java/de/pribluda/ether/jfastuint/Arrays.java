@@ -950,9 +950,10 @@ final class Arrays {
                 && otherOffset < offset + length;
     }
 
-    // Diagonal multiplication over slices.
-    // Each output word is written once, directly into the destination slice.
-    // The caller is responsible for any aliasing-safe operand staging.
+    // Schoolbook multiplication over slices.
+    // The kernel accumulates into thread-local scratch, then copies the finished
+    // result slice back once. This keeps the math simple for fixed 128/256-bit
+    // widths while still avoiding any dependency on pre-zeroed destination data.
     private static boolean multiplySlices(
             final int[] dest,
             final int destOffset,
@@ -967,39 +968,45 @@ final class Arrays {
             return false;
         }
 
+        Scratchpad pad = SCRATCH.get();
+        final int[] temp = pad.product;
+        java.util.Arrays.fill(temp, 0, width, 0);
+
         boolean overflow = false;
-        final int productWidth = leftLength + rightLength;
-        final int loopLimit = Math.max(width, productWidth);
-
-        long carry = 0;
-        for (int k = 0; k < loopLimit; k++) {
-            long lo = carry;
-            long hi = 0;
-
-            final int leftMin = Math.max(0, k - (rightLength - 1));
-            final int leftMax = Math.min(leftLength - 1, k);
-
-            for (int i = leftMin; i <= leftMax; i++) {
-                final long product = (left[leftOffset + i] & LONG) * (right[rightOffset + (k - i)] & LONG);
-                final long prev = lo;
-                lo += product & LONG;
-                if (Long.compareUnsigned(lo, prev) < 0) {
-                    hi++;
-                }
-                hi += product >>> 32;
+        for (int i = 0; i < leftLength; i++) {
+            final long aVal = left[leftOffset + i] & LONG;
+            if (aVal == 0) {
+                continue;
             }
 
-            carry = hi + (lo >>> 32);
-            if (k < width) {
-                dest[destOffset + k] = (int) lo;
-            } else if (lo != 0 || carry != 0) {
+            final int remaining = width - i;
+            if (remaining <= 0) {
+                overflow = true;
+                continue;
+            }
+
+            final int limit = Math.min(rightLength, remaining);
+            long carry = 0;
+            // Indexing is slice-relative: temp[0] is the least-significant word
+            // of the current result slice.
+            int destIdx = i;
+            for (int j = 0; j < limit; j++, destIdx++) {
+                long sum = (temp[destIdx] & LONG) + aVal * (right[rightOffset + j] & LONG) + carry;
+                temp[destIdx] = (int) sum;
+                carry = sum >>> 32;
+            }
+            while (carry != 0 && destIdx < width) {
+                long sum = (temp[destIdx] & LONG) + carry;
+                temp[destIdx] = (int) sum;
+                carry = sum >>> 32;
+                destIdx++;
+            }
+            if (carry != 0) {
                 overflow = true;
             }
         }
 
-        if (carry != 0) {
-            overflow = true;
-        }
+        System.arraycopy(temp, 0, dest, destOffset, width);
         return overflow;
     }
 
