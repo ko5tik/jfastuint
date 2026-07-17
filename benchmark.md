@@ -49,11 +49,19 @@ The following JMH benchmarks compare **mutable**, **immutable** `UInt256` implem
 | `UInt256` mutable | 7.14 ± 1.01 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
 
 ### Multiplication
+This run uses large operands in the `10^15` to `10^25` range, plus 32-bit scalar multipliers, to better match the library's typical workload.
+
 | Variant | Throughput (ops / µs) | GC Alloc Rate (MB / s) | GC Alloc Rate Norm (B / op) | GC Count |
 |--------|----------------------|-----------------------|----------------------------|----------|
-| `BigInteger` | 19.91 ± 2.83 | 1518.75 ± 216.09 | 120 B/op | 107 |
-| `UInt256` immutable | 9.05 ± 0.98 | 598.17 ± 64.97 | 104 B/op | 62 |
-| `UInt256` mutable | 8.87 ± 1.66 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
+| `BigInteger` large x large | 5.92 ± 0.93 | 1325.07 ± 208.33 | 352 B/op | 64 |
+| `UInt256` large x large immutable | 5.65 ± 0.81 | 1149.22 ± 165.47 | 320 B/op | 81 |
+| `UInt256` large x large mutable | 3.62 ± 0.56 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
+| `BigInteger` large x int | 6.10 ± 0.94 | 1427.02 ± 220.24 | 368 B/op | 90 |
+| `UInt256` large x int immutable | 8.93 ± 2.15 | 1815.37 ± 437.28 | 320 B/op | 82 |
+| `UInt256` large x int mutable | 8.99 ± 1.34 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
+| `BigInteger` large x long | 7.23 ± 2.33 | 1691.62 ± 545.85 | 368 B/op | 85 |
+| `UInt256` large x long immutable | 7.89 ± 2.22 | 1603.93 ± 451.66 | 320 B/op | 114 |
+| `UInt256` large x long mutable | 9.44 ± 0.54 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
 
 ---
 
@@ -80,4 +88,3 @@ The following JMH benchmarks compare **mutable**, **immutable** `UInt256` implem
 | 512 | `BigInteger` | 9.00 ± 1.00 | 521.15 ± 148.10 | 184 B/op | 41 |
 | 512 | `UInt256` immutable | 9.00 ± 1.00 | 479.26 ± 121.00 | 104 B/op | 41 |
 | 512 | `UInt256` mutable | 10.00 ± 1.00 | ≈ 0 | ≈ 0 B/op | ≈ 0 |
-
